@@ -63,6 +63,10 @@
 </head>
 
 <body>
+    <div id="browserBanner"
+        style="display: none; background-color: #ffcccb; color: black; padding: 10px; text-align: center;">
+        This site is best viewed in Chrome. Some features may not work correctly in other browsers.
+    </div>
     [[ if .IsZeptocore ]]
     <div class="ear leftear"><a href="/docs" style="left:30px; position:relative;"><i class="fas fa-book fa-rotate-by"
                 style="--fa-rotate-angle: -45deg; " aria-hidden="true"></i></a></div>
@@ -1109,7 +1113,16 @@
                 $("#dialog2").dialog("open");
             });
         });
+        function isChrome() {
+            return navigator.userAgent.toLowerCase().indexOf('chrome') > -1;
+        }
+
         window.onload = function () {
+
+            // Display the browser banner if not using Chrome
+            if (!isChrome()) {
+                document.getElementById('browserBanner').style.display = 'block';
+            }
             let consent = localStorage.getItem('cookieConsent');
             if (!consent) {
                 document.getElementById('cookieConsentContainer').style.display = 'block';
