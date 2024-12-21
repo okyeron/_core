@@ -52,7 +52,7 @@
 #include "midi_comm_callback.h"
 #endif
 #include "break_knob.h"
-
+#include "knob_filter.h"
 #define KNOB_ATTEN_ZERO_WIDTH 80
 #define DEBOUNCE_FILE_SWITCH 2000
 
@@ -485,10 +485,14 @@ void input_handling() {
       MCP_ATTEN_AMEN, MCP_KNOB_SAMPLE,
   };
   int16_t knob_val[KNOB_NUM] = {0, 0, 0, 0, 0};
-  KnobChange *knob_change[KNOB_NUM];
+  KnobFilter knob_filter[KNOB_NUM];
   for (uint8_t i = 0; i < KNOB_NUM; i++) {
-    knob_change[i] = KnobChange_malloc(6);
+    knob_filter_init(&knob_filter[i], 25);
   }
+  // KnobChange *knob_change[KNOB_NUM];
+  // for (uint8_t i = 0; i < KNOB_NUM; i++) {
+  //   knob_change[i] = KnobChange_malloc(6);
+  // }
 
 #define BUTTON_NUM 4
 #define BTN_MODE 0
@@ -978,7 +982,8 @@ void input_handling() {
 
     for (uint8_t i = 0; i < KNOB_NUM; i++) {
       int16_t raw_val = MCP3208_read(mcp3208, knob_gpio[i], false);
-      val = KnobChange_update(knob_change[i], raw_val);
+      // val = KnobChange_update(knob_change[i], raw_val);
+      val = knob_filter_update(&knob_filter[i], raw_val);
       if (debounce_startup == 15 + i) {
         val = raw_val;
         printf("[ectocore] knob %d=%d\n", i, val);
@@ -1192,7 +1197,7 @@ void input_handling() {
         WS2812_show(ws2812);
 
       } else if (knob_gpio[i] == MCP_ATTEN_AMEN) {
-        // printf("[ectocore] knob_amen_atten %d\n", val);
+        printf("[ectocore] knob_amen_atten %d\n", val);
         // check if CV is plugged in for AMEN
         if (!cv_plugged[CV_AMEN]) {
           if (val < 512 - 24) {
@@ -1235,10 +1240,10 @@ void input_handling() {
       } else {
         gpio_btn_held_time[i] = current_time - gpio_btn_last_pressed[i];
       }
-      // reset all knobchange debouncers
-      for (uint8_t j = 0; j < KNOB_NUM; j++) {
-        KnobChange_reset(knob_change[j]);
-      }
+      // // reset all knobchange debouncers
+      // for (uint8_t j = 0; j < KNOB_NUM; j++) {
+      //   KnobChange_reset(knob_change[j]);
+      // }
       if (gpio_btns[i] == GPIO_BTN_MODE) {
         printf("[ectocore] btn_mode %d\n", val);
         // check if taptempo button is pressed
