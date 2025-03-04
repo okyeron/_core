@@ -1,3 +1,8 @@
+bool clock_in_did = true;
+uint32_t negative_latency_us =
+    (uint32_t)roundf(((float)SAMPLES_PER_BUFFER * 1000000.0f) / 44100.0f);
+uint32_t negative_latency_us_last_ct = 0;
+uint32_t negative_latency_us_next = 0;
 
 void clock_in_do_update() {
 #ifdef INCLUDE_ECTOCORE
@@ -7,11 +12,17 @@ void clock_in_do_update() {
 #endif
     clock_in_activator++;
   } else {
-    clock_in_do = true;
-    clock_in_last_last_time = clock_in_last_time;
-    clock_in_last_time = time_us_32();
-    clock_in_beat_total++;
-    clock_in_ready = true;
+    if (clock_in_did) {
+      clock_in_did = false;
+    } else {
+      clock_in_do = true;
+      clock_in_last_last_time = clock_in_last_time;
+      clock_in_last_time = time_us_32();
+      clock_in_beat_total++;
+      clock_in_ready = true;
+      printf("[clockhandling] %d %d %d", negative_latency_us_last_ct,
+             clock_in_last_time, negative_latency_us_last_ct);
+    }
   }
   if (playback_stopped) {
     playback_was_stopped_clock = true;
@@ -54,5 +65,37 @@ void clock_handling_start() {
     do_restart_playback = true;
     timer_step();
     update_repeating_timer_to_bpm(sf->bpm_tempo);
+  }
+}
+
+void clock_handling_every() {
+  if (!clock_in_do || clock_in_did || clock_in_ready ||
+      clock_in_last_time == 0 || clock_in_diff_2x == 0) {
+    return;
+  }
+  if (negative_latency_us_last_ct == 0) {
+    negative_latency_us_last_ct = time_us_32();
+    return;
+  }
+  if (negative_latency_us_next == 0) {
+    negative_latency_us_next =
+        clock_in_last_time + (clock_in_diff_2x / 2) - negative_latency_us;
+  }
+  uint32_t now_time = time_us_32();
+  if (now_time >= negative_latency_us_next &&
+      negative_latency_us_last_ct < negative_latency_us_next) {
+    printf("[clockhandling] negative latency: %d\n",
+           negative_latency_us_next - now_time);
+    negative_latency_us = negative_latency_us_next - now_time;
+    negative_latency_us_next = 0;
+    negative_latency_us_last_ct = 0;
+    clock_in_do = true;
+    clock_in_last_last_time = clock_in_last_time;
+    clock_in_last_time = time_us_32();
+    clock_in_beat_total++;
+    clock_in_ready = true;
+    clock_in_did = true;
+  } else {
+    negative_latency_us_last_ct = now_time;
   }
 }

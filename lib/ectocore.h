@@ -552,6 +552,7 @@ void __not_in_flash_func(input_handling)() {
   ClockInput *clockinput =
       ClockInput_create(GPIO_CLOCK_IN, clock_handling_up, clock_handling_down,
                         clock_handling_start);
+  ClockInput_set_every(clockinput, clock_handling_every);
 
   WS2812 *ws2812;
   ws2812 = WS2812_new(GPIO_WS2812, pio0, 2);

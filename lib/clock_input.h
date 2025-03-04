@@ -37,6 +37,7 @@ typedef struct ClockInput {
   callback_int callback_up;
   callback_int callback_down;
   callback_void callback_start;
+  callback_void callback_every;
 } ClockInput;
 
 void ClockInput_destroy(ClockInput *ci) {
@@ -81,6 +82,10 @@ int32_t ClockInput_timeSinceLast(ClockInput *ci) {
   return time_us_32() - ci->last_time;
 }
 
+void ClockInput_set_every(ClockInput *ci, callback_void callback) {
+  ci->callback_every = callback;
+}
+
 void ClockInput_update(ClockInput *ci) {
   uint8_t clock_pin = 1 - gpio_get(ci->gpio);
   //   code to verify polarity
@@ -109,6 +114,9 @@ void ClockInput_update(ClockInput *ci) {
     }
   }
   ci->last_state = clock_pin;
+  if (ci->callback_every != NULL) {
+    ci->callback_every();
+  }
 }
 
 #endif
