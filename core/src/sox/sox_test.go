@@ -112,6 +112,41 @@ func TestComment(t *testing.T) {
 	assert.Equal(t, "hello", MustString(GetComment(fname2)))
 }
 
+func TestFilenames(t *testing.T) {
+	// create a test set of filenames, their bpms and their beats
+	type T struct {
+		fname string
+		beats float64
+		bpm   float64
+	}
+	tests := []T{
+		{"172 jigsaw break.wav", 0, 172},
+		{"03_juke_172bpm_2bars.wav", 8, 172},
+		{"ExP_HipHop02_bpm172_beats8.wav", 8, 172},
+		{"03_floating_172bpm_2bars.wav", 8, 172},
+		{"172 a greek break less boom 172 2 layer.wav", 0, 172},
+		{"172 950 ts.wav", 0, 172},
+		{"DivKid_ImpeachThePresident_bpm172_beats8.wav", 8, 172},
+		{"Raja_trnql_bpm172_beats8.wav", 8, 172},
+		{"CelestialGlitters.wav", 0, 0},
+		{"Metronome 172 BPM 2 bars.wav", 8, 172},
+		{"Metronome 172 BPM 8 beats.wav", 8, 172},
+		{"110 Metronome 172BPM 2 bars.wav", 8, 172},
+		{"Metronome 172 BPM - 8 beats.wav", 8, 172},
+		{"60 bpm drum beat", 0, 60},
+	}
+	// test each one
+	for _, test := range tests {
+		beats, bpm, err := parseFilename(test.fname)
+		assert.Nil(t, err)
+		if test.beats != beats || test.bpm != bpm {
+			t.Logf("Filename: %s, Expected beats: %v, Actual beats: %v, Expected bpm: %v, Actual bpm: %v", test.fname, test.beats, beats, test.bpm, bpm)
+		}
+		assert.Equal(t, test.beats, beats)
+		assert.Equal(t, test.bpm, bpm)
+	}
+}
+
 func TestTrimBeats(t *testing.T) {
 	os.Remove("test.wav")
 	fnames, _ := filepath.Glob("*.wav")
