@@ -1,6 +1,6 @@
 # Makefile
 export PICO_EXTRAS_PATH ?= $(CURDIR)/pico-extras
-export PICO_SDK_PATH ?= $(CURDIR)/pico-sdk
+export PICO_SDK_PATH=/Users/nevetsokyeron/Documents/GitHub/_core/pico-sdk
 NPROCS := $(shell grep -c 'processor' /proc/cpuinfo)
 
 GOVERSION = go1.21.13
@@ -28,6 +28,11 @@ install_go21:
 zeptoboard: copyboard pico-extras lib/fuzz.h lib/transfer_saturate2.h lib/sinewaves2.h lib/crossfade4_441.h lib/resonantfilter_data.h lib/cuedsounds.h build
 	make -C build -j$(NPROCS)
 	mv build/_core.uf2 zeptoboard.uf2
+
+zeptomech: copyzepto pico-extras lib/fuzz.h lib/transfer_saturate2.h lib/sinewaves2.h lib/crossfade4_441.h lib/resonantfilter_data.h lib/cuedsounds.h build
+	cp zeptomech_compile_definitions.cmake target_compile_definitions.cmake
+	make -C build -j$(NPROCS)
+	mv build/_core.uf2 zeptomech.uf2
 
 zeptocore: copyzepto pico-extras lib/fuzz.h lib/transfer_saturate2.h lib/sinewaves2.h lib/crossfade4_441.h lib/resonantfilter_data.h lib/cuedsounds.h build
 	cp zeptocore_compile_definitions.cmake target_compile_definitions.cmake

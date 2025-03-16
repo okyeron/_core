@@ -688,6 +688,17 @@ int main() {
   gpio_set_dir(PIN_DCDC_PSM_CTRL, GPIO_OUT);
   gpio_put(PIN_DCDC_PSM_CTRL, 1);  // PWM mode for less Audio noise
 
+#ifdef INCLUDE_ZEPTOMECH
+    // BLUELED
+    gpio_init(23);
+    gpio_set_dir(23, GPIO_OUT);
+    gpio_put(23, 0);
+    // 5v enable
+    gpio_init(19);
+    gpio_set_dir(19, GPIO_OUT);
+    gpio_put(19, 1);
+#endif
+
 #ifdef INCLUDE_ZEPTOCORE
   i2c_init(i2c_default, 50 * 1000);
   gpio_set_function(I2C_SDA_PIN, GPIO_FUNC_I2C);
@@ -838,7 +849,7 @@ int main() {
   resFilter[1] = ResonantFilter_create(0);
 #endif
 #ifdef INCLUDE_RGBLED
-  ws2812 = WS2812_new(23, pio0, 2);
+  ws2812 = WS2812_new(9, pio0, 2);
   sleep_ms(1);
   WS2812_fill(ws2812, 0, 0, 0, 0);
   sleep_ms(1);
