@@ -200,7 +200,7 @@ void __not_in_flash_func(input_handling)() {
 
   KnobChange *knob_change_arcade[8];
   ADS7830 *arcade_ads7830 = NULL;
-  if (is_arcade_box) {
+  if (is_arcade_box || is_zeptomech) {
     arcade_ads7830 = ADS7830_malloc(ADS7830_ADDR);
     // create array of knob changes
     for (uint8_t i = 0; i < 8; i++) {
@@ -777,6 +777,16 @@ void __not_in_flash_func(input_handling)() {
     }
 #endif
 
+// if (is_zeptomech) {
+//   for (uint8_t i = 0; i < 8; i++) {
+//     int16_t adcValue = KnobChange_update(
+//     knob_change_arcade[i], (int16_t)ADS7830_read(arcade_ads7830, i));
+
+//     if (adcValue > -1) {
+//       // printf("knob %d: %d\n", i, adcValue);
+//     }
+//   }
+// }
     if (is_arcade_box) {
       // volume                   tempo
       // sample selection         dj filter
@@ -786,11 +796,14 @@ void __not_in_flash_func(input_handling)() {
       for (uint8_t i = 0; i < 8; i++) {
         int16_t adcValue = KnobChange_update(
             knob_change_arcade[i], (int16_t)ADS7830_read(arcade_ads7830, i));
-        if (adcValue > -1) {
-// printf("knob %d: %d\n", i, adcValue);
+
+            if (adcValue > -1) {
+          // printf("knob %d: %d\n", i, adcValue);
+
 #ifdef INCLUDE_MIDI
           MidiOut_cc(midiout[0], i + 60, adcValue * 127 / 255);
 #endif
+
           if (i == 0) {
             // change volume
             new_vol = (255 - adcValue) * VOLUME_STEPS * 6 / 7 / 255;
@@ -899,7 +912,9 @@ void __not_in_flash_func(input_handling)() {
                               adcValue, 100);
             // </random_jump>
           }
-        }
+
+       }
+
       }
     }
 

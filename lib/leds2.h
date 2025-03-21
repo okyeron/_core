@@ -150,12 +150,14 @@ void LEDS_clear(LEDS *leds) {
     }
   }
 }
+#ifdef INCLUDE_ZEPTOMECH
+extern void LEDS_render_forward_zeptomech(LEDS* leds);
+#endif
 
 void LEDS_render(LEDS *leds) {
-#ifdef INCLUDE_ZEPTOMECH
-  // TODO
-  return;
-#endif
+  // LEDS_render_forward_zeptomech(leds);
+
+#ifndef INCLUDE_ZEPTOMECH
   // light up the PCA9552
   for (uint8_t i = 1; i < LEDS_ROWS; i++) {
     for (uint8_t j = 0; j < LEDS_COLS; j++) {
@@ -193,6 +195,7 @@ void LEDS_render(LEDS *leds) {
       }
     }
   }
+#endif
 
   if (is_arcade_box) {
     if (leds->gpio_leds_set != leds->gpio_leds_set_last) {

@@ -23,12 +23,12 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     BTN_COL_START=5
     INCLUDE_BUTTONS=1
     INCLUDE_KNOBS=1
-    INCLUDE_PCA9552=1
+    # INCLUDE_PCA9552=1
     INCLUDE_CLOCKINPUT=1
     INCLUDE_INPUTHANDLING=1
     INCLUDE_FILTER=1
     INCLUDE_ZEPTOCORE=1
-    # INCLUDE_MIDI=1
+    INCLUDE_MIDI=1
     # INCLUDE_CUEDSOUNDS=1
     # INCLUDE_SSD1306=1
 
@@ -102,15 +102,15 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 )
 
 # # uncomment these lines to include midi
-# target_link_libraries(${PROJECT_NAME} 
-#     tinyusb_device
-#     tinyusb_board
-# )
-# pico_enable_stdio_usb(${PROJECT_NAME} 0)
-# pico_enable_stdio_uart(${PROJECT_NAME} 1)
-# target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+target_link_libraries(${PROJECT_NAME} 
+    tinyusb_device
+    tinyusb_board
+)
+pico_enable_stdio_usb(${PROJECT_NAME} 0)
+pico_enable_stdio_uart(${PROJECT_NAME} 1)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 
 # uncomment these lines to have normal USB
-pico_enable_stdio_usb(${PROJECT_NAME} 1)
-pico_enable_stdio_uart(${PROJECT_NAME} 1)
+# pico_enable_stdio_usb(${PROJECT_NAME} 1)
+# pico_enable_stdio_uart(${PROJECT_NAME} 1)
 

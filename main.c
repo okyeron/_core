@@ -24,6 +24,30 @@
 
 #include "lib/includes.h"
 
+#ifdef INCLUDE_ZEPTOMECH
+void LEDS_render_forward_zeptomech(LEDS* leds)
+{
+  // TODO
+  int k = 0;
+  for (uint8_t i = 0; i < LEDS_ROWS; i++) {
+    for (uint8_t j = 0; j < LEDS_COLS; j++) {
+      int val = leds->state[i][j]  * 64;
+//      if(leds->state[i][j] == 2){
+        WS2812_fill(ws2812, k, val, val, val); 
+    //  }else if(leds->state[i][j] ==0){
+  //      WS2812_fill(ws2812, k, 0, 0, 0); 
+      //}
+      k++;
+    }
+  }
+  
+  sleep_ms(1);
+  WS2812_show(ws2812);
+
+  return;
+}
+#endif
+
 // static uint8_t dub_step_numerator[] = {1, 1, 1, 1, 1, 1, 1, 1};
 // static uint8_t dub_step_denominator[] = {2, 3, 4, 8, 8, 12, 12, 16};
 // static uint8_t dub_step_steps[] = {8, 12, 16, 32, 16, 16};
@@ -731,6 +755,12 @@ int main() {
   }
 #endif
 
+#ifdef INCLUDE_ZEPTOMECH
+    is_zeptomech = true;
+#else
+    is_zeptomech = false;
+#endif
+
 #ifdef LED_TOP_GPIO
   gpio_init(LED_TOP_GPIO);
   gpio_set_dir(LED_TOP_GPIO, GPIO_OUT);
@@ -856,9 +886,9 @@ int main() {
   resFilter[1] = ResonantFilter_create(0);
 #endif
 #ifdef INCLUDE_RGBLED
-  ws2812 = WS2812_new(23, pio0, 2);
+  ws2812 = WS2812_new(NEOPIXPIN, pio0, 2);
   sleep_ms(1);
-  WS2812_fill(ws2812, 0, 0, 0, 0);
+  WS2812_fill(ws2812, 0, 128, 0, 0);
   sleep_ms(1);
   WS2812_show(ws2812);
   // for (uint8_t i = 0; i < 255; i++) {
