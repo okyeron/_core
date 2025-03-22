@@ -448,6 +448,7 @@ void __not_in_flash_func(input_handling)() {
         }
       } else if (adc_startup == 0) {
         if (button_is_pressed(KEY_A)) {
+        // A + X  
 #ifdef INCLUDE_MIDI
           // send out midi cc
           MidiOut_cc(midiout[0], 3, adc * 127 / 4096);
@@ -470,6 +471,7 @@ void __not_in_flash_func(input_handling)() {
                             adc * 255 / 4096, 100);
           DebounceDigits_set(debouncer_digits, sf->bpm_tempo, 300);
         } else if (button_is_pressed(KEY_B)) {
+        // B + X    
 #ifdef INCLUDE_MIDI
           // send out midi cc
           MidiOut_cc(midiout[0], 6, adc * 127 / 4096);
@@ -484,6 +486,7 @@ void __not_in_flash_func(input_handling)() {
           sample_selection_index = adc_raw * sample_selection_num / 4096;
           printf("sample_selection_index: %d\n", sample_selection_index);
         } else if (button_is_pressed(KEY_D)) {
+        // D + X  
 #ifdef INCLUDE_MIDI
           // send out midi cc
           MidiOut_cc(midiout[0], 12, adc * 127 / 4096);
@@ -573,6 +576,7 @@ void __not_in_flash_func(input_handling)() {
         }
       } else if (adc_startup == 0) {
         if (button_is_pressed(KEY_A)) {
+        // A + Y
 #ifdef INCLUDE_MIDI
           // send out midi cc
           MidiOut_cc(midiout[0], 4, adc * 127 / 4096);
@@ -593,6 +597,7 @@ void __not_in_flash_func(input_handling)() {
           DebounceUint8_set(debouncer_uint8[DEBOUNCE_UINT8_LED_TRIANGLE],
                             adc_original * 255 / 4096, 250);
         } else if (button_is_pressed(KEY_B)) {
+        // B + Y
 #ifdef INCLUDE_MIDI
           // send out midi cc
           MidiOut_cc(midiout[0], 7, adc * 127 / 4096);
@@ -717,6 +722,7 @@ void __not_in_flash_func(input_handling)() {
         printf("fx_param %d: %d %d\n", 2, single_key - 4, adc * 255 / 4096);
       } else if (adc_startup == 0) {
         if (button_is_pressed(KEY_A)) {
+        // A + Z  
 #ifdef INCLUDE_MIDI
           // send out midi cc
           MidiOut_cc(midiout[0], 5, adc * 127 / 4096);
@@ -731,6 +737,7 @@ void __not_in_flash_func(input_handling)() {
           DebounceUint8_set(debouncer_uint8[DEBOUNCE_UINT8_LED_WALL],
                             adc * 255 / 4096, 200);
         } else if (button_is_pressed(KEY_B)) {
+        // B + Z
 #ifdef INCLUDE_MIDI
           // send out midi cc
           MidiOut_cc(midiout[0], 8, adc * 127 / 4096);
@@ -742,11 +749,11 @@ void __not_in_flash_func(input_handling)() {
           WaveBass_set_volume(wavebass, adc);
 #endif
         } else if (button_is_pressed(KEY_C)) {
+        // C + Z
 #ifdef INCLUDE_MIDI
           // send out midi cc
           MidiOut_cc(midiout[0], 11, adc * 127 / 4096);
 #endif
-
           const uint8_t quantizations[10] = {1,  6,  12,  24,  48,
                                              64, 96, 144, 192, 192};
           printf("quantization: %d\n", quantizations[adc * 9 / 4096]);
@@ -757,7 +764,7 @@ void __not_in_flash_func(input_handling)() {
           DebounceUint8_set(debouncer_uint8[DEBOUNCE_UINT8_LED_WALL],
                             adc * 255 / 4096, 200);
         } else if (button_is_pressed(KEY_D)) {
-          // D + Z
+        // D + Z
 #ifdef INCLUDE_MIDI
           // send out midi cc
           MidiOut_cc(midiout[0], 14, adc * 127 / 4096);
@@ -787,7 +794,7 @@ void __not_in_flash_func(input_handling)() {
 //     }
 //   }
 // }
-    if (is_arcade_box) {
+    if (is_arcade_box || is_zeptomech) {
       // volume                   tempo
       // sample selection         dj filter
       // grimoire selection       grimoire probability
@@ -806,7 +813,11 @@ void __not_in_flash_func(input_handling)() {
 
           if (i == 0) {
             // change volume
-            new_vol = (255 - adcValue) * VOLUME_STEPS * 6 / 7 / 255;
+            if (is_arcade_box){
+              new_vol = (255 - adcValue) * VOLUME_STEPS * 6 / 7 / 255;
+            }else{
+              new_vol = adcValue *  VOLUME_STEPS * 6 / 7 / 255;
+            }
             if (new_vol != sf->vol) {
               sf->vol = new_vol;
               printf("sf-vol: %d\n", sf->vol);
