@@ -155,7 +155,6 @@ extern void LEDS_render_forward_zeptomech(LEDS* leds);
 #endif
 
 void LEDS_render(LEDS *leds) {
-  // LEDS_render_forward_zeptomech(leds);
 
 #ifndef INCLUDE_ZEPTOMECH
   // light up the PCA9552
@@ -195,6 +194,8 @@ void LEDS_render(LEDS *leds) {
       }
     }
   }
+#else
+  LEDS_render_forward_zeptomech(leds);
 #endif
 
   if (is_arcade_box) {
