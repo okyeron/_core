@@ -28,15 +28,33 @@
 void LEDS_render_forward_zeptomech(LEDS* leds)
 {
   // TODO
+  // Light up the leds
   int k = 0;
   for (uint8_t i = 0; i < LEDS_ROWS; i++) {
     for (uint8_t j = 0; j < LEDS_COLS; j++) {
+      // state 0 = off // LED_NONE
+      // state 1 = dim  // LED_DIM
+      // state 2 = bright // LED_BRIGHT
+      // state 3 = blink  // LED_BLINK
+      
       int val = leds->state[i][j]  * 64;
-//      if(leds->state[i][j] == 2){
-        WS2812_fill(ws2812, k, val, val, val); 
-    //  }else if(leds->state[i][j] ==0){
-  //      WS2812_fill(ws2812, k, 0, 0, 0); 
-      //}
+
+      // blink leds
+      int blinkval = 128;
+      blink_time = 70;
+      if (leds->state[i][j] == LED_BLINK) {
+        leds->rgb_leds_counter[k]++;
+        if (leds->rgb_leds_counter[k] == blink_time) {
+          // set led
+          WS2812_fill(ws2812, k, blinkval, blinkval, blinkval); 
+        } else if (leds->rgb_leds_counter[j] >= blink_time * 2) {
+          // set led
+          WS2812_fill(ws2812, k, 0, 0, 0); 
+          leds->rgb_leds_counter[k] = 0;
+        }
+      }else {
+        WS2812_fill(ws2812, k, val, val, val); // automatically does NONE/DIM/BRIGHT
+      }
       k++;
     }
   }
@@ -888,7 +906,7 @@ int main() {
 #ifdef INCLUDE_RGBLED
   ws2812 = WS2812_new(NEOPIXPIN, pio0, 2);
   sleep_ms(1);
-  WS2812_fill(ws2812, 0, 128, 0, 0);
+  WS2812_fill(ws2812, 0, 0, 0, 0);
   sleep_ms(1);
   WS2812_show(ws2812);
   // for (uint8_t i = 0; i < 255; i++) {

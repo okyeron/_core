@@ -50,6 +50,7 @@ typedef struct LEDS {
   int8_t gpio_leds_pin[4];
   uint8_t gpio_leds_set;
   uint8_t gpio_leds_set_last;
+  uint16_t rgb_leds_counter[LED_COUNT];
 } LEDS;
 
 LEDS *LEDS_create() {
