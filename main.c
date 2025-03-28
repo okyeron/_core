@@ -37,10 +37,10 @@ void LEDS_render_forward_zeptomech(LEDS* leds)
       // state 2 = bright // LED_BRIGHT
       // state 3 = blink  // LED_BLINK
       
-      int val = leds->state[i][j]  * 64;
+      int val = leds->state[i][j]  * 32;
 
       // blink leds
-      int blinkval = 128;
+      int blinkval = 64;
       blink_time = 70;
       if (leds->state[i][j] == LED_BLINK) {
         leds->rgb_leds_counter[k]++;
@@ -794,11 +794,12 @@ int main() {
   gpio_set_dir(FIVEVENABLE, GPIO_OUT);
   gpio_put(FIVEVENABLE, 1);
 
-  ws2812 = WS2812_new(NEOPIXPIN, pio0, 2);
-  sleep_ms(1);
-  WS2812_fill(ws2812, 0, 0, 0, 0);
-  sleep_ms(1);
-  WS2812_show(ws2812);
+  // ws2812 = WS2812_new(NEOPIXPIN, pio0, 2);
+  // WS2812_set_brightness(ws2812, 50);
+  // sleep_ms(1);
+  // WS2812_fill(ws2812, 0, 0, 0, 0);
+  // sleep_ms(1);
+  // WS2812_show(ws2812);
 #endif
 
 #ifdef INCLUDE_ECTOCORE
@@ -905,6 +906,7 @@ int main() {
 #endif
 #ifdef INCLUDE_RGBLED
   ws2812 = WS2812_new(NEOPIXPIN, pio0, 2);
+  WS2812_set_brightness(ws2812, 100);
   sleep_ms(1);
   WS2812_fill(ws2812, 0, 0, 0, 0);
   sleep_ms(1);

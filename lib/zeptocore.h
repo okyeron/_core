@@ -823,8 +823,13 @@ void __not_in_flash_func(input_handling)() {
               printf("sf-vol: %d\n", sf->vol);
             }
             clear_debouncers();
-            DebounceUint8_set(debouncer_uint8[DEBOUNCE_UINT8_LED_BAR],
+            if (is_arcade_box){
+              DebounceUint8_set(debouncer_uint8[DEBOUNCE_UINT8_LED_BAR],
                               255 - adcValue, 200);
+              }else{
+                DebounceUint8_set(debouncer_uint8[DEBOUNCE_UINT8_LED_BAR],
+                  adcValue, 200);
+              }
           } else if (i == 1) {
             // change bpm
             if (adcValue < 16) {
