@@ -29,7 +29,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     INCLUDE_FILTER=1
     INCLUDE_ZEPTOCORE=1
     INCLUDE_MIDI=1
-    # INCLUDE_CUEDSOUNDS=1
+    INCLUDE_CUEDSOUNDS=1
     # INCLUDE_SSD1306=1
 
     # ARCADE DEFINITIONS
@@ -75,7 +75,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
     # utilize core1 for audio to avoid dropouts
     CORE1_PROCESS_I2S_CALLBACK=1 
-    # DO_OVERCLOCK=1
+    DO_OVERCLOCK=1
 
     # debug printing
     # PRINT_AUDIO_USAGE=1
@@ -101,7 +101,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     # DETROITUNDERGROUND=1
 )
 
-# # uncomment these lines to include midi
+# uncomment these lines to include midi
 target_link_libraries(${PROJECT_NAME} 
     tinyusb_device
     tinyusb_board
@@ -110,7 +110,6 @@ pico_enable_stdio_usb(${PROJECT_NAME} 0)
 pico_enable_stdio_uart(${PROJECT_NAME} 1)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 
-# uncomment these lines to have normal USB
+# # uncomment these lines to have normal USB
 # pico_enable_stdio_usb(${PROJECT_NAME} 1)
 # pico_enable_stdio_uart(${PROJECT_NAME} 1)
-

@@ -59,7 +59,7 @@ void LEDS_render_forward_zeptomech(LEDS* leds)
     }
   }
   
-  sleep_ms(1);
+  // sleep_ms(1);
   WS2812_show(ws2812);
 
   return;
@@ -794,6 +794,7 @@ int main() {
   gpio_set_dir(FIVEVENABLE, GPIO_OUT);
   gpio_put(FIVEVENABLE, 1);
 
+  // This is done via INCLUDE_RGBLED
   // ws2812 = WS2812_new(NEOPIXPIN, pio0, 2);
   // WS2812_set_brightness(ws2812, 50);
   // sleep_ms(1);
@@ -880,6 +881,10 @@ int main() {
   wavebass = WaveBass_malloc();
 #endif
 
+#ifdef INCLUDE_MIDI
+  tusb_init();
+#endif
+
   // intialize tap tempo
   taptempo = TapTempo_malloc();
 
@@ -899,6 +904,7 @@ int main() {
   // TODO
   // load chain from SD card
   //   Chain_load(chain, &sync_using_sdcard);
+
 
 #ifdef INCLUDE_FILTER
   resFilter[0] = ResonantFilter_create(0);

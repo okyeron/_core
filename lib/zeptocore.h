@@ -155,6 +155,14 @@ void __not_in_flash_func(input_handling)() {
   for (uint8_t i = 0; i < 3; i++) {
     adcs[i] = FilterExp_create(10);
   }
+  uint8_t knobX = 2;
+  uint8_t knobY = 1;
+  uint8_t knobZ = 0;
+#ifdef INCLUDE_ZEPTOMECH
+  knobX = 0;
+  knobY = 1;
+  knobZ = 2;
+#endif
 
   uint8_t debounce_beat_repeat = 0;
   uint16_t debounce_sel_variation_next = 0;
@@ -179,9 +187,9 @@ void __not_in_flash_func(input_handling)() {
     ResonantFilter_setFilterType(resFilter[channel], 0);
     ResonantFilter_setFc(resFilter[channel], global_filter_index);
   }
-#ifdef INCLUDE_MIDI
-  tusb_init();
-#endif
+// #ifdef INCLUDE_MIDI
+//   tusb_init();
+// #endif
 
 #ifdef INCLUDE_SSD1306
   ssd1306_t disp;
@@ -375,7 +383,7 @@ void __not_in_flash_func(input_handling)() {
                         random_integer_in_range(0, 15));
     }
 
-    adc_select_input(2);
+    adc_select_input(knobX);
 
     // check if a single button is held
     // for purposes of changing the fx params
@@ -412,6 +420,7 @@ void __not_in_flash_func(input_handling)() {
 #ifdef INCLUDE_KNOBS
     // knob X
     uint16_t adc_raw = adc_read();
+    // adc_select_input(knobX);
     adc = FilterExp_update(adcs[0], adc_raw);
     if (abs(adc_last[0] - adc) > adc_threshold) {
       adc_debounce[0] = adc_debounce_max;
@@ -557,7 +566,7 @@ void __not_in_flash_func(input_handling)() {
 
 #ifdef INCLUDE_KNOBS
     // knob Y
-    adc_select_input(1);
+    adc_select_input(knobY);
     adc = FilterExp_update(adcs[1], adc_read());
     if (abs(adc_last[1] - adc) > adc_threshold) {
       adc_debounce[1] = adc_debounce_max;
@@ -709,7 +718,7 @@ void __not_in_flash_func(input_handling)() {
 
 #ifdef INCLUDE_KNOBS
     // knob Z
-    adc_select_input(0);
+    adc_select_input(knobZ);
     adc = FilterExp_update(adcs[2], adc_read());
     if (abs(adc_last[2] - adc) > adc_threshold) {
       adc_debounce[2] = adc_debounce_max;
