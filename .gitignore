@@ -13,6 +13,7 @@ lib/cuedsounds_ectocore.h
 lib/cuedsounds_zeptocore.h
 lib/fuzz.h
 lib/resonantfilter_data.h
+lib/test
 zeptomech.uf2
 target_compile_definitions.cmake
 .vscode/settings.json

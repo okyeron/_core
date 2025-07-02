@@ -7,8 +7,8 @@
 #ifdef INCLUDE_ZEPTOMECH
 #define UART_ID uart1
 #define UART_BAUD 31250
-// PIO pio_tx = pio0;
-// uint sm_tx = 3;
+PIO pio_tx = pio2;
+uint sm_tx = 0;
 #endif
 
 uint32_t send_buffer_as_sysex(char* buffer, uint32_t bufsize) {
@@ -49,8 +49,8 @@ void send_midi_clock() {
     tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message));
   }
 #ifdef INCLUDE_ZEPTOMECH
-  uart_write_blocking(UART_ID, midi_message, sizeof(midi_message));
-  // uart_tx_program_puts_len(pio_tx, sm_tx, midi_message, sizeof(midi_message)); // HWMIDI
+  // uart_write_blocking(UART_ID, midi_message, sizeof(midi_message));
+  uart_tx_program_puts_len(pio_tx, sm_tx, midi_message, sizeof(midi_message)); // HWMIDI
 #endif
 }
 
@@ -66,8 +66,8 @@ void send_midi_start() {
     tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message)); // USBMIDI
   }
 #ifdef INCLUDE_ZEPTOMECH
-  uart_write_blocking(UART_ID, midi_message, sizeof(midi_message));
-  // uart_tx_program_puts_len(pio_tx, sm_tx, midi_message, sizeof(midi_message)); // HWMIDI
+  // uart_write_blocking(UART_ID, midi_message, sizeof(midi_message));
+  uart_tx_program_puts_len(pio_tx, sm_tx, midi_message, sizeof(midi_message)); // HWMIDI
 #endif
 }
 
@@ -83,8 +83,8 @@ void send_midi_stop() {
     tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message)); // USBMIDI
   }
 #ifdef INCLUDE_ZEPTOMECH
-  uart_write_blocking(UART_ID, midi_message, sizeof(midi_message));
-  // uart_tx_program_puts_len(pio_tx, sm_tx, midi_message, sizeof(midi_message)); // HWMIDI
+  // uart_write_blocking(UART_ID, midi_message, sizeof(midi_message));
+  uart_tx_program_puts_len(pio_tx, sm_tx, midi_message, sizeof(midi_message)); // HWMIDI
 #endif
 }
 
@@ -105,8 +105,8 @@ void send_midi_note_on(uint8_t note, uint8_t velocity) {
     tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message));
   }
 #ifdef INCLUDE_ZEPTOMECH
-  uart_write_blocking(UART_ID, midi_message, sizeof(midi_message));
-  // uart_tx_program_puts_len(pio_tx, sm_tx, midi_message, sizeof(midi_message)); // HWMIDI
+  // uart_write_blocking(UART_ID, midi_message, sizeof(midi_message));
+  uart_tx_program_puts_len(pio_tx, sm_tx, midi_message, sizeof(midi_message)); // HWMIDI
 #endif
 }
 
@@ -132,7 +132,7 @@ typedef void (*midi_comm_callback)(uint8_t, uint8_t, uint8_t, uint8_t);
 void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
                     callback_int midi_note_off, callback_void midi_start,
                     callback_void midi_continue, callback_void midi_stop,
-                    callback_void midi_timing) {
+                    callback_void midi_timing, callback_void midi_control_change) {
   uint8_t midi_buffer[3];
   midi_buffer[0] = 0;
   midi_buffer[1] = 0;
@@ -205,17 +205,30 @@ void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
     uint8_t channel = midi_buffer[0] & 0x0F;
 
     // Extract the note number and velocity
-    uint8_t note = midi_buffer[1];
-    uint8_t velocity = midi_buffer[2];
-    if (status == 176 && channel == 0 && note == 0) {
+    uint8_t byte2 = midi_buffer[1];
+    uint8_t byte3 = midi_buffer[2];
+
+    if (status == 0xb0 ){
+      // this is a CC message
+      midi_control_change (channel, byte2, byte3);
+    }
+    //   elseif data[1] & 0xf0 == 0xb0 then
+    // msg = {
+    //   type = "cc",
+    //   cc = data[2],
+    //   val = data[3],
+    //   ch = data[1] - 0xb0 + 1
+    // }
+
+    if (status == 176 && channel == 0 && byte2 == 0) {
       send_text_as_sysex("command=reset");
       sleep_ms(10);
       reset_usb_boot(0, 0);
-    } else if (status == 176 && channel == 0 && note == 1) {
+    } else if (status == 176 && channel == 0 && byte2 == 1) {
       send_text_as_sysex("version=v6.3.9");
     }
     if (callback != NULL) {
-      callback(status, channel, note, velocity);
+      callback(status, channel, byte2, byte3);
     }
   }
 }

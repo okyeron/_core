@@ -367,7 +367,7 @@ void button_key_on_double(uint8_t key1, uint8_t key2) {
   } else if (key1 == KEY_B) {
     // A
     if (key2 == KEY_C) {
-      // A+B
+      // B+C MUTE
       if (button_mute) {
         printf("[button_handler] button_mute off\n");
         button_mute = false;
@@ -387,7 +387,7 @@ void button_key_on_double(uint8_t key1, uint8_t key2) {
       //                    1) %
       //                   3;
     } else if (key2 == KEY_D) {
-      // A+C
+      // B+D STOP/START
       if (playback_stopped) {
         // cancel repeating_timer
         cancel_repeating_timer(&timer);
@@ -1353,7 +1353,7 @@ bool button_handler(ButtonMatrix *bm) {
     }
     if (mode_buttons16 == MODE_MASH ||
         (mode_buttons16 == MODE_JUMP && key_on_buttons[KEY_A])) {
-      if (is_arcade_box) {
+      if (is_arcade_box) {  // does this need to be for zeptomech too
         // turn off all the leds
         for (uint8_t i = 4; i < 20; i++) {
           LEDS_set(leds, i, 0);

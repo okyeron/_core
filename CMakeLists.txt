@@ -1,6 +1,15 @@
 # Set minimum required version of CMake
 cmake_minimum_required(VERSION 3.12)
 
+# Set the board to PICO2 or custom board
+set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR})
+set(PICO_BOARD board-zeptomech-rp2350 CACHE STRING "Board type")
+set(PICO_PLATFORM rp2350)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Pull in PICO SDK (must be before project)
 include(pico_sdk_import.cmake)
 
@@ -10,8 +19,6 @@ include(pico_extras_import.cmake)
 
 # Set name of project (as PROJECT_NAME) and C/C++ standards
 project(_core C CXX ASM)
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
 
 # Creates a pico-sdk subdirectory in our project for the libraries
 pico_sdk_init()

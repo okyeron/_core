@@ -1,7 +1,6 @@
 // Copyright 2023-2025 Zack Scholl, GPLv3.0
 #include "clockhandling.h"
 //
-#include "break_knob.h"
 #include "midicallback.h"
 #ifdef INCLUDE_ZEPTOMECH
 #include "onewiremidi2.h"
@@ -15,6 +14,7 @@
 #include "image.h"
 #include "ssd1306.h"
 #endif
+#include "break_knob.h"
 
 void printStringWithDelay(char *str) {
   int len = strlen(str);
@@ -80,28 +80,12 @@ void make_random_sequence(uint8_t adcValue) {
 }
 
 void __not_in_flash_func(input_handling)() {
-
-  
   printf("core1 running!\n");
   // flash bad signs
   while (!fil_is_open) {
     printf("waiting to start\n");
     sleep_ms(10);
   }
-
-#ifdef INCLUDE_MIDI
-  // tusb_init();
-  // manually init USB instead
-  sleep_ms(250);
-  tud_init(0);
-  // just sit and pump the usb stack for 100-200ms
-  uint32_t t0 = time_us_32();
-  while (time_us_32() - t0 < 200000) {
-    tud_task();
-  }
-  sleep_ms(250);
-#endif
-
   LEDS_clear(leds);
   LEDS_render(leds);
 
@@ -186,6 +170,10 @@ void __not_in_flash_func(input_handling)() {
     ResonantFilter_setFc(resFilter[channel], global_filter_index);
   }
 
+#ifdef INCLUDE_MIDI
+  tusb_init();
+#endif
+
 #ifdef INCLUDE_SSD1306
   ssd1306_t disp;
   disp.external_vcc = false;
@@ -214,13 +202,12 @@ void __not_in_flash_func(input_handling)() {
   bool sel_sample_knob_ready = false;
   clock_start_stop_sync = true;
 
-
   // WHILE LOOP
   while (1) {
 #ifdef INCLUDE_MIDI
     tud_task();
     midi_comm_task(midi_comm_callback_fn, midi_note_on, midi_note_off,
-                   midi_start, midi_continue, midi_stop, midi_timing, midi_control_change);
+                   midi_start, midi_continue, midi_stop, midi_timing);
 #endif
 
     if (do_switch_between_clock_and_midi) {

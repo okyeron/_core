@@ -101,7 +101,7 @@ bool DebounceDigits_active(DebounceDigits *self) {
     return false;
   }
   self->duration--;
-  if (is_arcade_box) {
+  if (is_arcade_box || is_zeptomech) {
     for (uint8_t i = 0; i < 3; i++) {
       if (self->duration == 0) {
         break;

@@ -1,6 +1,10 @@
 # Set minimum required version of CMake
 cmake_minimum_required(VERSION 3.12)
 
+set(PICO_BOARD_HEADER_DIRS /Users/nevetsokyeron/Documents/GitHub/_core-okyeron/)
+set(PICO_BOARD board-zeptomech-rp2350)
+
+
 # Pull in PICO SDK (must be before project)
 include(pico_sdk_import.cmake)
 
@@ -23,12 +27,12 @@ add_executable(${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}.c)
 
-add_subdirectory(mcp23017)
+# add_subdirectory(mcp23017)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         pico_stdlib
         hardware_i2c
-        mcp23017_lib
+        # mcp23017_lib
  )
 
 # enable usb output, disable uart output

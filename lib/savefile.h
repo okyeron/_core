@@ -31,7 +31,7 @@ SaveFile *SaveFile_malloc() {
   sf = malloc(sizeof(SaveFile) + (sizeof(Sequencer) * 3 * 16));
   sf->bank = 0;
   sf->sample = 0;
-  sf->vol = 120;
+  sf->vol = 100;
   sf->bpm_tempo = 170;
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 16; j++) {

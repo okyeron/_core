@@ -46,6 +46,110 @@ void midi_note_on(int note, int velocity) {
 #endif
 }
 
+void midi_control_change (int channel, int control, int value) {
+  printf("chan/cc/value: %d/%d/%d\n", channel, control, value);
+  uint8_t new_adcvalue = (value * 2) ;
+  switch (control) {
+  case 60: // volume
+      uint8_t new_vol = new_adcvalue; // is it 256 total?
+      if (new_vol != sf->vol) {
+        sf->vol = new_vol;
+        // printf("sf-vol: %d\n", sf->vol);
+      }
+    break;
+  case 61: // tempo
+      uint8_t new_bpm = new_adcvalue ; // what is range?
+      if (new_bpm != sf->bpm_tempo) {
+        sf->bpm_tempo = new_bpm;
+        // printf("sf-vol: %d\n", sf->vol);
+      }
+    break;
+  case 62: // sample
+      uint8_t new_sample = new_adcvalue ; // what is range?
+      uint8_t sample_selection_index = 0;
+      sample_selection_index = new_sample * (sample_selection_num - 1) / 255;
+      uint8_t f_sel_bank_next = sample_selection[sample_selection_index].bank;
+      uint8_t f_sel_sample_next = sample_selection[sample_selection_index].sample;
+      if (f_sel_bank_next != sel_bank_cur ||
+          f_sel_sample_next != sel_sample_cur) {
+        sel_bank_next = f_sel_bank_next;
+        sel_sample_next = f_sel_sample_next;
+        printf("[zeptocore] %d bank %d, sample %d\n",
+                sample_selection_index, sel_bank_next, sel_sample_next);
+        fil_current_change = true;
+        }
+      break;
+  case 63: // DJ Filter
+        for (uint8_t channel = 0; channel < 2; channel++) {
+          int filter_spacing = 16;
+          for (uint8_t channel = 0; channel < 2; channel++) {
+            if (new_adcvalue < 128 - filter_spacing) {
+              global_filter_index =
+                new_adcvalue * (resonantfilter_fc_max) / (128 - filter_spacing);
+              global_filter_lphp = 0;
+              ResonantFilter_setFilterType(resFilter[channel],
+                            global_filter_lphp);
+              ResonantFilter_setFc(resFilter[channel], global_filter_index);
+            } else if (value >= 64 + filter_spacing) {
+              global_filter_index = (new_adcvalue - (128 + filter_spacing)) *
+                        (resonantfilter_fc_max) /
+                        (128 - filter_spacing);
+              global_filter_lphp = 1;
+              ResonantFilter_setFilterType(resFilter[channel],
+                            global_filter_lphp);
+              ResonantFilter_setFc(resFilter[channel], global_filter_index);
+            } else {
+              global_filter_index = resonantfilter_fc_max;
+              global_filter_lphp = 0;
+              ResonantFilter_setFilterType(resFilter[channel],
+                            global_filter_lphp);
+              ResonantFilter_setFc(resFilter[channel], resonantfilter_fc_max);
+            }
+          }
+        }
+      break;
+  case 64: // Grimoire
+      // change the grimoire rune
+      grimoire_rune = new_adcvalue * 7 / 255;
+      break;
+  case 65: // Grimoire Probability = "Break"
+      break_knob_set_point = new_adcvalue * 1024 / 255;
+      break;
+  case 66: // Random sequencer	
+      if (new_adcvalue > 255) new_adcvalue = 255;
+      if (new_adcvalue < 32) {
+        // normal
+        do_retrig_at_end_of_phrase = false;
+        random_sequence_length = 0;
+      } else if (new_adcvalue < 255 - 32) {
+        do_retrig_at_end_of_phrase = false;
+        uint8_t sequence_lengths[11] = {
+            1, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64,
+        };
+        random_sequence_length =
+            sequence_lengths[((int16_t)(new_adcvalue - 32) * 11 / (255 - 32)) % 11];
+      } else {
+        // new random sequence
+        regenerate_random_sequence_arr();
+        random_sequence_length = 8;
+        do_retrig_at_end_of_phrase = true;
+      }
+      break;
+  case 67: // Random Jump - "Amen"
+        if (new_adcvalue < 128) {
+          sf->stay_in_sync = true;
+          probability_of_random_jump = new_adcvalue * 100 / 128;
+        } else if (new_adcvalue >= 128) {
+          sf->stay_in_sync = false;
+          probability_of_random_jump = (255 - new_adcvalue) * 100 / 128;
+        }
+      break;
+  default:
+    return;
+  }
+
+}
+
 void midi_start() {
 #ifdef DEBUG_MIDI
   printf("[midicallback] midi start\n");

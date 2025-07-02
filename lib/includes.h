@@ -8,13 +8,14 @@
 #include <string.h>
 #include <time.h>
 
+#include "pico/stdlib.h"
+#include "pico.h"
 #include "hardware/adc.h"
 #include "hardware/clocks.h"
 #include "hardware/flash.h"
 #include "hardware/i2c.h"
 #include "hardware/pio.h"
 #include "hardware/pll.h"
-#include "hardware/rtc.h"
 #include "hardware/structs/clocks.h"
 #include "hardware/sync.h"
 #include "hardware/watchdog.h"
@@ -22,8 +23,12 @@
 #include "pico/binary_info.h"
 #include "pico/bootrom.h"
 #include "pico/multicore.h"
-#include "pico/stdlib.h"
 #include "pico/types.h"
+
+#ifdef INCLUDE_MIDI
+#include "tusb.h"
+#include "bsp/board.h"
+#endif
 
 #ifdef INCLUDE_ZEPTOMECH
 #include "hardware/timer.h"
@@ -31,10 +36,7 @@
 #include "uart_tx.pio.h"
 #endif
 //
-#ifdef INCLUDE_MIDI
-#include "bsp/board.h"
-#include "tusb.h"
-#endif
+
 //
 bool is_arcade_box = false;
 bool is_zeptomech = false;

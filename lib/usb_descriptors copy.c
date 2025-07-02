@@ -23,6 +23,8 @@
  *
  */
 
+#ifdef INCLUDE_MIDI
+
 #include "tusb.h"
 #include <pico/unique_id.h>
 
@@ -60,8 +62,24 @@ enum {
 // array of pointer to string descriptors
 char const* string_desc_arr[] = {
     (const char[]){0x09, 0x04},  // 0: is supported language is English (0x0409)
-    "denki-oto",              // 1: Manufacturer
-    "zeptomech",  // 2: Product
+#ifdef INCLUDE_BOARDCORE
+    "infinite-digits",              // 1: Manufacturer
+    "zeptoboard",  // 2: Product
+#endif
+#ifdef INCLUDE_ZEPTOCORE
+  #ifdef INCLUDE_ZEPTOMECH
+      "denki-oto",              // 1: Manufacturer
+      "zeptomech",  // 2: Product
+  #else
+      "infinite-digits",              // 1: Manufacturer
+      "zeptocore",  // 2: Product
+    #endif
+#endif
+#ifdef INCLUDE_ECTOCORE
+    "infinite-digits",             // 1: Manufacturer
+    "ectocore",  // 2: Product
+#endif
+
     NULL,  // 3: Serials
     "CDC", // 4: CDC
     "MIDI" // 5: MIDI
@@ -209,3 +227,4 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid)
   _desc_str[0] = (TUSB_DESC_STRING << 8) | (2 * chr_count + 2);
   return _desc_str;
 }
+#endif

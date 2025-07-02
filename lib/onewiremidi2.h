@@ -55,6 +55,7 @@ typedef struct Onewiremidi {
   callback_void midi_continue;
   callback_void midi_stop;
   callback_void midi_timing;
+  callback_void midi_control_change;
 } Onewiremidi;
 
 Onewiremidi *Onewiremidi_new(PIO pio, unsigned char sm, const uint pin,

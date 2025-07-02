@@ -51,6 +51,7 @@ extern "C" {
 // Enable Device stack
 #define CFG_TUD_ENABLED       1
 
+
 // defined by compiler flags for flexibility
 #ifndef CFG_TUSB_MCU
 #error CFG_TUSB_MCU must be defined
@@ -68,7 +69,7 @@ extern "C" {
 #endif
 
 // Default is max speed that hardware controller could support with on-chip PHY
-#define CFG_TUD_MAX_SPEED     BOARD_TUD_MAX_SPEED
+// #define CFG_TUD_MAX_SPEED     BOARD_TUD_MAX_SPEED
 
 // CFG_TUSB_DEBUG is defined by compiler in DEBUG build
 // #define CFG_TUSB_DEBUG           0

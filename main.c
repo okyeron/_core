@@ -17,7 +17,7 @@ void LEDS_render_forward_zeptomech(LEDS* leds)
       // state 2 = bright // LED_BRIGHT
       // state 3 = blink  // LED_BLINK
       
-      int val = leds->state[i][j]  * 32;
+      int val = leds->state[i][j] * 32;
 
       // blink leds
       int blinkval = 64;
@@ -28,7 +28,7 @@ void LEDS_render_forward_zeptomech(LEDS* leds)
           // set led
           WS2812_fill(ws2812, k, blinkval, blinkval, blinkval); 
         } else if (leds->rgb_leds_counter[j] >= blink_time * 2) {
-          // set led
+          // clear led
           WS2812_fill(ws2812, k, 0, 0, 0); 
           leds->rgb_leds_counter[k] = 0;
         }
@@ -674,27 +674,25 @@ bool repeating_timer_callback(struct repeating_timer *t) {
 #include "lib/zeptoboard.h"
 #endif
 
-// Invoked when the device is mounted
-void tud_mount_cb(void)
-{
-}
-// Invoked when the device is unmounted
-void tud_umount_cb(void)
-{
-}
-// Invoked when the device is suspended
-void tud_suspend_cb(bool remote_wakeup_en)
-{
-}
-// Invoked when the USB bus is resumed
-void tud_resume_cb(void)
-{
-}
+// // Invoked when the device is mounted
+// void tud_mount_cb(void)
+// {
+// }
+// // Invoked when the device is unmounted
+// void tud_umount_cb(void)
+// {
+// }
+// // Invoked when the device is suspended
+// void tud_suspend_cb(bool remote_wakeup_en)
+// {
+// }
+// // Invoked when the USB bus is resumed
+// void tud_resume_cb(void)
+// {
+// }
 
 int main() {
-  stdio_init_all();
-  #ifdef INCLUDE_MIDI
-  tusb_init();
+
   // manually init USB instead
   //  sleep_ms(250);
   //   tud_init(0);
@@ -704,45 +702,47 @@ int main() {
   //     tud_task();
   //  }
   //  sleep_ms(250);
-  #endif
-    
-  // Set PLL_USB 96MHz
-  const uint32_t main_line = 96;
-  pll_init(pll_usb, 1, main_line * 16 * MHZ, 4, 4);
-  clock_configure(clk_usb, 0, CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
-                  main_line * MHZ, main_line / 2 * MHZ);
-  // Change clk_sys to be 96MHz.
-  clock_configure(clk_sys, CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
-                  CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
-                  main_line * MHZ, main_line * MHZ);
-  // CLK peri is clocked from clk_sys so need to change clk_peri's freq
-  clock_configure(clk_peri, 0, CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
-                  main_line * MHZ, main_line * MHZ);
-  // Reinit uart now that clk_peri has changed
 
-  stdio_init_all();
+
+
+  // Set PLL_USB 96MHz
+  // const uint32_t main_line = 96;
+  // pll_init(pll_usb, 1, main_line * 16 * MHZ, 4, 4);
+  // clock_configure(clk_usb, 0, CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
+  //                 main_line * MHZ, main_line / 2 * MHZ);
+  // // Change clk_sys to be 96MHz.
+  // clock_configure(clk_sys, CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+  //                 CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
+  //                 main_line * MHZ, main_line * MHZ);
+  // // CLK peri is clocked from clk_sys so need to change clk_peri's freq
+  // clock_configure(clk_peri, 0, CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
+  //                 main_line * MHZ, main_line * MHZ);
+  // // Reinit uart now that clk_peri has changed
+  
+// stdio_init_all();
+
 // overclocking!!!
 // note that overclocking >200Mhz requires setting sd_card_sdio
 // rp2040_sdio_init(sd_card_p, 2);
 // otherwise clock divider of 1 is fine
 // set_sys_clock_khz(270000, true);
-#ifdef DO_OVERCLOCK
-#ifdef INCLUDE_BOARDCORE
-  set_sys_clock_khz(150000, true);
-#else
-  set_sys_clock_khz(225000, true);
-#endif
-#else
-  // set_sys_clock_khz(125000, true);
-#endif
-  sleep_ms(75);
+// #ifdef DO_OVERCLOCK
+// #ifdef INCLUDE_BOARDCORE
+//   set_sys_clock_khz(150000, true);
+// #else
+//   set_sys_clock_khz(225000, true);
+// #endif
+// #else
+//   // set_sys_clock_khz(125000, true);
+// #endif
+  // sleep_ms(75);
 
   // DCDC PSM control
   // 0: PFM mode (best efficiency)
   // 1: PWM mode (improved ripple)
-  gpio_init(PIN_DCDC_PSM_CTRL);
-  gpio_set_dir(PIN_DCDC_PSM_CTRL, GPIO_OUT);
-  gpio_put(PIN_DCDC_PSM_CTRL, 1);  // PWM mode for less Audio noise
+  // gpio_init(PIN_DCDC_PSM_CTRL);
+  // gpio_set_dir(PIN_DCDC_PSM_CTRL, GPIO_OUT);
+  // gpio_put(PIN_DCDC_PSM_CTRL, 1);  // PWM mode for less Audio noise
 
 #ifdef INCLUDE_ZEPTOCORE
   i2c_init(i2c_default, 50 * 1000);
@@ -802,11 +802,11 @@ int main() {
   // REDLED ON
   gpio_init(REDLED);
   gpio_set_dir(REDLED, GPIO_OUT);
-  gpio_put(REDLED, 1);
+  gpio_put(REDLED, true);
   // 5v enable
   gpio_init(FIVEVENABLE);
   gpio_set_dir(FIVEVENABLE, GPIO_OUT);
-  gpio_put(FIVEVENABLE, 1);
+  gpio_put(FIVEVENABLE, true);
 
   // HARDWARE UART MIDI - ATTEMPT AT CHANGING TIMING TO WORK WITH 96Mhz
   // Testing if I can change baud rate to match 96hz thing
@@ -815,19 +815,26 @@ int main() {
   // int baud = (4 * clock_get_hz(clk_peri)) / (64 * current_ibrd + current_fbrd);
 
   // UART setup for HW MIDI
+  // HARDWARE MIDI RX
   // gpio_init(UART1_RX); // Its PIO - do I need to set this to init?
   // gpio_set_dir(UART1_RX, GPIO_IN);
-  gpio_init(UART1_TX);
-  gpio_set_dir(UART1_TX, GPIO_OUT);
-  uart_init(UART_ID, UART_BAUD);
-  gpio_set_function(UART1_TX, GPIO_FUNC_UART);
-  uart_set_format(UART_ID, 8, 1, UART_PARITY_NONE);
-  uart_set_fifo_enabled(UART_ID, true);
 
-  //   Test Setup PIO for HARDWARE MIDI TX - NOT ENOUGH state machines to use this
-  //   uint offset_tx = pio_add_program(pio_tx, &uart_tx_program);
-  //   // sm_tx = pio_claim_unused_sm(pio_tx, true);
-  //   uart_tx_program_init(pio_tx, 2, offset_tx, UART1_TX, UART_BAUD);
+  // HARDWARE MIDI TX
+  // Regular UART
+  // gpio_init(UART1_TX);
+  // gpio_set_dir(UART1_TX, GPIO_OUT);
+  // uart_init(UART_ID, UART_BAUD);
+  // gpio_set_function(UART1_TX, GPIO_FUNC_UART);
+  // uart_set_format(UART_ID, 8, 1, UART_PARITY_NONE);
+  // uart_set_fifo_enabled(UART_ID, true);
+
+  //   Test Setup PIO for HARDWARE MIDI TX - Which SM on rp2350?
+    uint offset_tx = pio_add_program(pio_tx, &uart_tx_program);
+    // uint sm_tx = pio_claim_unused_sm(pio_tx, true);
+    uart_tx_program_init(pio_tx, sm_tx, offset_tx, UART1_TX, UART_BAUD);
+    // pio_sm_init(pio_tx, 0, offset_tx, NULL);
+    // pio_sm_set_enabled(pio_tx, 0, true);
+
 
   // ws2812 setup is done via INCLUDE_RGBLED
 #endif
@@ -862,18 +869,8 @@ int main() {
   sd_init_driver();
 
   // sleep before sd
-  sleep_ms(100);
+  // sleep_ms(100);
   // printf("startup!\n");
-  sdcard_startup();
-
-
-#ifdef INCLUDE_ZEPTOMECH
-  // Setup the PIO for HARDWARE MIDI TX instead
-  // uint offset_tx = pio_add_program(pio_tx, &uart_tx_program);
-  // sm_tx = pio_claim_unused_sm(pio_tx, false);
-  // uart_tx_program_init(pio_tx, sm_tx, offset_tx, UART1_TX, UART_BAUD);
-
-#endif
 
 #ifdef INCLUDE_ZEPTOCORE
   // initialize adcs
@@ -888,13 +885,14 @@ int main() {
   // it again 500ms later regardless of how long the callback took to execute
   // add_repeating_timer_ms(-1000, repeating_timer_callback, NULL, &timer);
   // cancel_repeating_timer(&timer);
-  update_repeating_timer_to_bpm(sf->bpm_tempo);
+  // update_repeating_timer_to_bpm(sf->bpm_tempo);
   // initialize random library
   random_initialize();
 
   // initialize message sync
   messagesync = MessageSync_malloc();
 
+  // INIT FX
   // intialize beat repeater
   beatrepeat = BeatRepeat_malloc();
 
@@ -909,12 +907,15 @@ int main() {
   // initialize saturation
   saturation = Saturation_malloc();
 
+  sdcard_startup();
+  update_repeating_timer_to_bpm(sf->bpm_tempo); // has to come after sdcard_startup()
+
+  
   // initialize debouncers
   for (uint8_t i = 0; i < DEBOUNCE_UINT8_NUM; i++) {
     debouncer_uint8[i] = DebounceUint8_malloc();
   }
   
-
 #ifdef INCLUDE_ZEPTOCORE
   debouncer_digits = DebounceDigits_malloc();
   leds = LEDS_create();
@@ -927,6 +928,8 @@ int main() {
   WS2812_fill(ws2812, 0, 0, 0, 0);
   sleep_ms(1);
   WS2812_show(ws2812);
+  sleep_ms(1);
+  LEDS_clear(leds);
   // for (uint8_t i = 0; i < 255; i++) {
   //   WS2812_fill(ws2812, i, 0, 0);
   //   WS2812_show(ws2812);
@@ -999,7 +1002,7 @@ int main() {
   // sf->fx_active[FX_SHAPER] = true;
 
 #endif
-
+  
   // blocking
   input_handling();
 }
