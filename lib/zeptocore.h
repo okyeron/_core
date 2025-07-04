@@ -136,7 +136,7 @@ void __not_in_flash_func(input_handling)() {
     // setup one wire midi
     onewiremidi =
         Onewiremidi_new(pio0, 3, UART1_RX, midi_note_on, midi_note_off,
-                        midi_start, midi_continue, midi_stop, midi_timing);
+                        midi_start, midi_continue, midi_stop, midi_timing, midi_control_change);
   } else {
     clockinput = ClockInput_create(CLOCK_INPUT_GPIO, clock_handling_up,
                                    clock_handling_down, clock_handling_start);
@@ -936,6 +936,7 @@ void __not_in_flash_func(input_handling)() {
             // <grimoire_selection>
             // change the grimoire rune
             grimoire_rune = adcValue * 7 / 255;
+            // printf("grimoire_rune: %d\n", grimoire_rune);
             clear_debouncers();
             DebounceUint8_set(debouncer_uint8[DEBOUNCE_UINT8_LED_GRIMOIRE],
                               adcValue, 100);
@@ -943,16 +944,19 @@ void __not_in_flash_func(input_handling)() {
           } else if (i == 5) {
             // <grimoire_probability>
             break_knob_set_point = adcValue * 1024 / 255;
+            // printf("grimoire_prob: %d\n", break_knob_set_point);
             clear_debouncers();
             DebounceUint8_set(debouncer_uint8[DEBOUNCE_UINT8_LED_RANDOM2],
                               adcValue, 100);
             // </grimoire_probability>
           } else if (i == 6) {
             // <random_sequencer>
+            // printf("adcValue: %d\n", adcValue);
             make_random_sequence(adcValue);
             // </random_sequencer>
           } else if (i == 7) {
             // <random_jump>
+            // printf("adcValue: %d\n", adcValue);
             if (adcValue < 128) {
               sf->stay_in_sync = true;
               probability_of_random_jump = adcValue * 100 / 128;

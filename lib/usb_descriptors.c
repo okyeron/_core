@@ -23,6 +23,8 @@
  *
  */
 
+#ifdef INCLUDE_MIDI
+
 #include "tusb.h"
 #include <pico/unique_id.h>
 
@@ -209,3 +211,4 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid)
   _desc_str[0] = (TUSB_DESC_STRING << 8) | (2 * chr_count + 2);
   return _desc_str;
 }
+#endif  // INCLUDE_MIDI

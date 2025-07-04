@@ -47,24 +47,40 @@ void midi_note_on(int note, int velocity) {
 }
 
 void midi_control_change (int channel, int control, int value) {
-  printf("chan/cc/value: %d/%d/%d\n", channel, control, value);
+  // printf("chan/cc/value: %d/%d/%d\n", channel, control, value);
   uint8_t new_adcvalue = (value * 2) ;
   switch (control) {
-  case 60: // volume
+  case cc_volume: // volume
       uint8_t new_vol = new_adcvalue; // is it 256 total?
       if (new_vol != sf->vol) {
         sf->vol = new_vol;
         // printf("sf-vol: %d\n", sf->vol);
       }
     break;
-  case 61: // tempo
+  case cc_bassvolume: // volume
+#ifdef INCLUDE_SINEBASS
+      WaveBass_set_volume(wavebass, new_adcvalue);
+#endif
+    break;
+  case cc_tempo: // tempo
       uint8_t new_bpm = new_adcvalue ; // what is range?
       if (new_bpm != sf->bpm_tempo) {
         sf->bpm_tempo = new_bpm;
         // printf("sf-vol: %d\n", sf->vol);
       }
     break;
-  case 62: // sample
+  case cc_pitch: // pitch
+        if (new_adcvalue < 120) {
+          sf->pitch_val_index = new_adcvalue * PITCH_VAL_MID ;
+        } else if (new_adcvalue > 132) {
+          new_adcvalue -= 120;
+          sf->pitch_val_index =
+              new_adcvalue * (PITCH_VAL_MAX - PITCH_VAL_MID) + PITCH_VAL_MID;
+        } else {
+          sf->pitch_val_index = PITCH_VAL_MID;
+        }
+      break;
+  case cc_sampleselect: // sample
       uint8_t new_sample = new_adcvalue ; // what is range?
       uint8_t sample_selection_index = 0;
       sample_selection_index = new_sample * (sample_selection_num - 1) / 255;
@@ -79,7 +95,22 @@ void midi_control_change (int channel, int control, int value) {
         fil_current_change = true;
         }
       break;
-  case 63: // DJ Filter
+  case cc_quantize: // Qunatize
+         const uint8_t quantizations[10] = {1,  6,  12,  24,  48,
+                                             64, 96, 144, 192, 192};
+          printf("quantization: %d\n", quantizations[new_adcvalue * 9 ]);
+          Sequencer_quantize(
+              sf->sequencers[mode_buttons16][sf->sequence_sel[mode_buttons16]],
+              quantizations[new_adcvalue * 9 ]);
+      break;
+  case cc_randtunnel: // Random Tunnel
+          probability_of_random_tunnel = new_adcvalue / 4;
+          // if (probability_of_random_tunnel < 100) {
+          if ((new_adcvalue) < 20) {
+            probability_of_random_tunnel = 0;
+          }
+      break;
+  case cc_djfilter: // DJ Filter
         for (uint8_t channel = 0; channel < 2; channel++) {
           int filter_spacing = 16;
           for (uint8_t channel = 0; channel < 2; channel++) {
@@ -108,14 +139,14 @@ void midi_control_change (int channel, int control, int value) {
           }
         }
       break;
-  case 64: // Grimoire
+  case cc_randfxbank: // Grimoire
       // change the grimoire rune
       grimoire_rune = new_adcvalue * 7 / 255;
       break;
-  case 65: // Grimoire Probability = "Break"
+  case cc_randfx: // Grimoire Probability = "Break"
       break_knob_set_point = new_adcvalue * 1024 / 255;
       break;
-  case 66: // Random sequencer	
+  case cc_randsequence: // Random sequencer	
       if (new_adcvalue > 255) new_adcvalue = 255;
       if (new_adcvalue < 32) {
         // normal
@@ -135,7 +166,7 @@ void midi_control_change (int channel, int control, int value) {
         do_retrig_at_end_of_phrase = true;
       }
       break;
-  case 67: // Random Jump - "Amen"
+  case cc_randjump: // Random Jump - "Amen"
         if (new_adcvalue < 128) {
           sf->stay_in_sync = true;
           probability_of_random_jump = new_adcvalue * 100 / 128;

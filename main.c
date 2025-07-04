@@ -665,7 +665,11 @@ bool repeating_timer_callback(struct repeating_timer *t) {
 }
 
 #ifdef INCLUDE_ZEPTOCORE
-#include "lib/zeptocore.h"
+  #ifdef INCLUDE_ZEPTOMECH
+    #include "lib/zeptomech.h"
+  #else
+    #include "lib/zeptocore.h"
+  #endif
 #endif
 #ifdef INCLUDE_ECTOCORE
 #include "lib/ectocore.h"
@@ -719,7 +723,7 @@ int main() {
   //                 main_line * MHZ, main_line * MHZ);
   // // Reinit uart now that clk_peri has changed
   
-// stdio_init_all();
+stdio_init_all();
 
 // overclocking!!!
 // note that overclocking >200Mhz requires setting sd_card_sdio
@@ -828,13 +832,14 @@ int main() {
   // uart_set_format(UART_ID, 8, 1, UART_PARITY_NONE);
   // uart_set_fifo_enabled(UART_ID, true);
 
+#ifdef INCLUDE_MIDI
   //   Test Setup PIO for HARDWARE MIDI TX - Which SM on rp2350?
     uint offset_tx = pio_add_program(pio_tx, &uart_tx_program);
     // uint sm_tx = pio_claim_unused_sm(pio_tx, true);
     uart_tx_program_init(pio_tx, sm_tx, offset_tx, UART1_TX, UART_BAUD);
     // pio_sm_init(pio_tx, 0, offset_tx, NULL);
     // pio_sm_set_enabled(pio_tx, 0, true);
-
+#endif
 
   // ws2812 setup is done via INCLUDE_RGBLED
 #endif

@@ -38,28 +38,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     MCP23017_ADDR2=0x21
     ADS7830_ADDR=0x48
 
-    # # black
-    # SDCARD_CMD_GPIO=2
-    # SDCARD_D0_GPIO=3
-    # AUDIO_CLK_GPIO=16 # LCK=17
-    # AUDIO_DIN_GPIO=18
-    # I2C_SDA_PIN=20
-    # I2C_SCL_PIN=21
-    # LED_1_GPIO=0
-    # LED_2_GPIO=19
-    # LED_3_GPIO=19
-    # LED_4_GPIO=19
-    # CLOCK_INPUT_GPIO=22
-    # BTN_ROW_START=7
-    # BTN_COL_START=12
-    # INCLUDE_BUTTONS=1
-    # INCLUDE_KNOBS=1
-    # INCLUDE_PCA9552=1
-    # INCLUDE_CLOCKINPUT=1
-    # INCLUDE_INPUTHANDLING=1
-    # INCLUDE_FILTER=1
-    # INCLUDE_ZEPTOCORE=1
-
 	# MECHA DEFINITIONS
     INCLUDE_ZEPTOMECH=1
 	FIVEVENABLE=19
@@ -102,7 +80,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     # DETROITUNDERGROUND=1
 )
 
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 
 # uncomment these lines to include midi
 target_link_libraries(${PROJECT_NAME} 
