@@ -108,7 +108,7 @@ typedef void (*midi_comm_callback)(uint8_t, uint8_t, uint8_t, uint8_t);
 void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
                     callback_int midi_note_off, callback_void midi_start,
                     callback_void midi_continue, callback_void midi_stop,
-                    callback_void midi_timing) {
+                    callback_void midi_timing, callback_void midi_control_change) {
   uint8_t midi_buffer[3];
   midi_buffer[0] = 0;
   midi_buffer[1] = 0;
@@ -179,6 +179,14 @@ void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
     // Extract the status byte and MIDI channel
     uint8_t status = midi_buffer[0] & 0xF0;
     uint8_t channel = midi_buffer[0] & 0x0F;
+
+    // Extract the note number and velocity
+    uint8_t byte2 = midi_buffer[1];
+    uint8_t byte3 = midi_buffer[2];
+    if (status == 0xb0 ){
+      // this is a CC message
+      midi_control_change (channel, byte2, byte3);
+    }
 
     // Extract the note number and velocity
     uint8_t note = midi_buffer[1];
