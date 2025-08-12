@@ -150,6 +150,8 @@ LEDText *ledtext;
 MidiOut *midiout[6];
 bool midi_input_activated = false;
 
+bool midi_buttons[BUTTONMATRIX_BUTTONS_MAX];
+int fx_button = -1;
  // setup some constants for CCs
 const uint8_t cc_knobx = 0;
 const uint8_t cc_knoby= 1;

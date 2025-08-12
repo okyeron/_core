@@ -22,6 +22,7 @@ uint16_t bit_set(uint16_t value, uint8_t bit, bool on) {
 
 // callback definitions
 typedef void (*callback_int_int)(int, int);
+typedef void (*callback_int_int_int)(int, int, int);
 typedef void (*callback_int)(int);
 typedef void (*callback_int32)(int32_t);
 typedef void (*callback_uint8_uint8)(uint8_t, uint8_t);

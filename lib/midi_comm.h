@@ -108,7 +108,7 @@ typedef void (*midi_comm_callback)(uint8_t, uint8_t, uint8_t, uint8_t);
 void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
                     callback_int midi_note_off, callback_void midi_start,
                     callback_void midi_continue, callback_void midi_stop,
-                    callback_void midi_timing, callback_void midi_control_change) {
+                    callback_void midi_timing, callback_int_int_int midi_control_change) {
   uint8_t midi_buffer[3];
   midi_buffer[0] = 0;
   midi_buffer[1] = 0;
@@ -161,12 +161,13 @@ void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
     // note on received
     usb_midi_present = true;
     if (midi_note_on != NULL) {
-      if (bytes_read == 3) {
-        // TODO: for some reason this is not working
-        midi_note_on(midi_buffer[1], midi_buffer[2]);
-      } else {
-        midi_note_on(midi_buffer[1], 0);
-      }
+      midi_note_on(midi_buffer[1], midi_buffer[2]);
+      // if (bytes_read == 3) {
+      //   // TODO: for some reason this is not working
+      //   midi_note_on(midi_buffer[1], midi_buffer[2]);
+      // } else {
+      //   midi_note_on(midi_buffer[1], 0);
+      // }
     }
     return;
   }

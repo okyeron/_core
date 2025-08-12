@@ -18,6 +18,17 @@ uint32_t midi_delta_count = 0;
 uint32_t midi_timing_count = 0;
 const uint8_t midi_timing_modulus = 24;
 
+// int fx_mapping[16] = {12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3 };
+int fx_mapping[16] = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+
+int midi_note_mapping[20] = {
+  0, 5, 10, 15,
+  1, 6, 11, 16, 
+  2, 7, 12, 17, 
+  3, 8, 13, 18, 
+  4, 9, 14, 19
+};
+
 void midi_note_off(int note) {
 #ifdef DEBUG_MIDI
   printf("note_off: %d\n", note);
@@ -30,6 +41,14 @@ void midi_note_off(int note) {
     midi_button1 = -1;
   }
 #endif
+  if(note > 59 && note < 76){   // midi notes
+    sf->fx_active[fx_mapping[note-60]] = false;
+    if(fx_mapping[note-60] == fx_button){
+      fx_button = -1;
+    }
+    update_fx(fx_mapping[note-60]);
+  }
+
 }
 
 void midi_note_on(int note, int velocity) {
@@ -44,6 +63,15 @@ void midi_note_on(int note, int velocity) {
   }
   input_button[note % NUM_BUTTONS].Set(true);
 #endif
+  if(note > 35 && note < 56){
+    uint8_t j = midi_note_mapping[note - 36];
+  }
+  if(note > 59 && note < 76){   // midi notes
+    sf->fx_active[fx_mapping[note-60]] = true;
+    fx_button = fx_mapping[note-60];
+    update_fx(fx_mapping[note-60]);
+  }
+
 }
 
 void midi_start() {
