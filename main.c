@@ -17,10 +17,10 @@ void LEDS_render_forward_zeptomech(LEDS* leds)
       // state 2 = bright // LED_BRIGHT
       // state 3 = blink  // LED_BLINK
       
-      int val = leds->state[i][j] * 32;
+      int val = leds->state[i][j] * 75;
 
       // blink leds
-      int blinkval = 64;
+      int blinkval = 3*75;
       blink_time = 70;
       if (leds->state[i][j] == LED_BLINK) {
         leds->rgb_leds_counter[k]++;
@@ -678,6 +678,7 @@ bool repeating_timer_callback(struct repeating_timer *t) {
 #include "lib/zeptoboard.h"
 #endif
 
+    
 // // Invoked when the device is mounted
 // void tud_mount_cb(void)
 // {
@@ -749,6 +750,7 @@ stdio_init_all();
   // gpio_put(PIN_DCDC_PSM_CTRL, 1);  // PWM mode for less Audio noise
 
 #ifdef INCLUDE_ZEPTOCORE
+  // SETUP i2c STUFF
   i2c_init(i2c_default, 50 * 1000);
   gpio_set_function(I2C_SDA_PIN, GPIO_FUNC_I2C);
   gpio_set_function(I2C_SCL_PIN, GPIO_FUNC_I2C);
@@ -803,6 +805,7 @@ stdio_init_all();
 #endif
 
 #ifdef INCLUDE_ZEPTOMECH
+  // SETUP PIN STUFF
   // REDLED ON
   gpio_init(REDLED);
   gpio_set_dir(REDLED, GPIO_OUT);
@@ -812,34 +815,56 @@ stdio_init_all();
   gpio_set_dir(FIVEVENABLE, GPIO_OUT);
   gpio_put(FIVEVENABLE, true);
 
-  // HARDWARE UART MIDI - ATTEMPT AT CHANGING TIMING TO WORK WITH 96Mhz
-  // Testing if I can change baud rate to match 96hz thing
-  // uint32_t current_ibrd = uart_get_hw(UART_ID)->ibrd;
-  // uint32_t current_fbrd = uart_get_hw(UART_ID)->fbrd;
-  // int baud = (4 * clock_get_hz(clk_peri)) / (64 * current_ibrd + current_fbrd);
+
+  // SETUP HARDWARE UART / PIO MIDI
 
   // UART setup for HW MIDI
   // HARDWARE MIDI RX
-  // gpio_init(UART1_RX); // Its PIO - do I need to set this to init?
-  // gpio_set_dir(UART1_RX, GPIO_IN);
+  gpio_init(UART1_RX); 
+  gpio_set_dir(UART1_RX, GPIO_IN);
 
   // HARDWARE MIDI TX
-  // Regular UART
   // gpio_init(UART1_TX);
   // gpio_set_dir(UART1_TX, GPIO_OUT);
-  // uart_init(UART_ID, UART_BAUD);
-  // gpio_set_function(UART1_TX, GPIO_FUNC_UART);
   // uart_set_format(UART_ID, 8, 1, UART_PARITY_NONE);
-  // uart_set_fifo_enabled(UART_ID, true);
 
-#ifdef INCLUDE_MIDI
-  //   Test Setup PIO for HARDWARE MIDI TX - Which SM on rp2350?
+  // UART RX SETUP
+  uart_init(UART_ID, UART_BAUD); // HARDWARE MIDI UART
+  gpio_set_function(UART1_RX, UART_FUNCSEL_NUM(UART_ID, UART1_RX));
+  // gpio_set_function(UART1_TX, GPIO_FUNC_UART);
+
+    // Set UART flow control CTS/RTS, we don't want these, so turn them off
+    uart_set_hw_flow(UART_ID, false, false);
+    uart_set_format(UART_ID, 8, 1, UART_PARITY_NONE);
+    
+    // Turn off FIFO's - we want to do this character by character
+    // uart_set_fifo_enabled(UART_ID, false);
+    // Set up a RX interrupt
+    // We need to set up the handler first
+    // Select correct interrupt for the UART we are using
+    int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
+    // And set up and enable the interrupt handlers
+    // irq_set_exclusive_handler(UART_IRQ, midi_read_poll);
+    // irq_set_enabled(UART_IRQ, true);
+    // uart_set_irq_enables(UART_ID, true, false);
+
+// TESTING PIO INTERRUPT for RX
+/*
+    // create a queue so the irq can save the data somewhere
+    queue_init(&fifo_rx, 1, FIFO_RX_SIZE);
+    // Setup an async context and worker to perform work when needed
+    if (!async_context_threadsafe_background_init_with_defaults(&async_context)) {
+        panic("failed to setup context");
+    }
+    async_context_add_when_pending_worker(&async_context.core, &worker);
+*/
+// #ifdef INCLUDE_MIDI
+
+  // Setup PIO for HARDWARE MIDI TX
     uint offset_tx = pio_add_program(pio_tx, &uart_tx_program);
-    // uint sm_tx = pio_claim_unused_sm(pio_tx, true);
     uart_tx_program_init(pio_tx, sm_tx, offset_tx, UART1_TX, UART_BAUD);
-    // pio_sm_init(pio_tx, 0, offset_tx, NULL);
-    // pio_sm_set_enabled(pio_tx, 0, true);
-#endif
+
+// #endif
 
   // ws2812 setup is done via INCLUDE_RGBLED
 #endif

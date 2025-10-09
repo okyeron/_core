@@ -794,6 +794,28 @@ bool button_handler(ButtonMatrix *bm) {
         } else {
           DebounceDigits_setText(debouncer_digits, "PIT OOFF", led_text_time);
         }
+#ifdef INCLUDE_ZEPTOMECH
+      } else if (key_pressed[0] == 12 && key_pressed[1] == 16 &&
+                 key_pressed[2] == 15 && key_pressed[3] == 19) {
+          // toggle TRS MIDI output of CCs/notes
+          printf("combo: toggle TRS MIDI out");
+          send_trs_cc_note = !send_trs_cc_note;
+          if (send_trs_cc_note){
+            DebounceDigits_setText(debouncer_digits, "MIDI TRS ON", led_text_time);
+          }else{
+            DebounceDigits_setText(debouncer_digits, "MIDI TRS OFF", led_text_time);
+          }
+      } else if (key_pressed[0] == 19 && key_pressed[1] == 18 &&
+                 key_pressed[2] == 17 && key_pressed[3] == 16) {
+          // toggle clock input sync mode
+          printf("combo: toggle clock/midi sync input ");
+          clock_source = !clock_source;
+          if (clock_source){
+            DebounceDigits_setText(debouncer_digits, "CLOCK IN", led_text_time);
+          }else{
+            DebounceDigits_setText(debouncer_digits, "MIDI IN", led_text_time);
+          }
+#endif
       }
     } else if (key_pressed_num == 8) {
       if (key_pressed[0] == 16 && key_pressed[1] == 12 && key_pressed[2] == 8 &&
@@ -880,6 +902,11 @@ bool button_handler(ButtonMatrix *bm) {
       // send out midi notes
       MidiOut_off(midiout[mode_buttons16], bm->off[i] - 4);
 #endif
+#ifdef INCLUDE_SINEBASS
+        if (mode_buttons16 == MODE_BASS) {
+          WaveBass_release(wavebass);
+        }
+#endif
     }
   }
 
@@ -905,8 +932,8 @@ bool button_handler(ButtonMatrix *bm) {
       }
       // make sure none of the B, C, or D buttons are held down
       bool all_off = true;
-      for (uint8_t i = 1; i < 4; i++) {
-        if (key_on_buttons[i] > 0) {
+      for (uint8_t j = 1; j < 4; j++) {
+        if (key_on_buttons[j] > 0) {
           all_off = false;
         }
       }

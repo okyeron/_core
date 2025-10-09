@@ -30,6 +30,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     INCLUDE_FILTER=1
     INCLUDE_ZEPTOCORE=1
     INCLUDE_MIDI=1
+    # DONT_SEND_SYSEX=1
     INCLUDE_CUEDSOUNDS=1
     # INCLUDE_SSD1306=1
 
@@ -87,6 +88,7 @@ target_link_libraries(${PROJECT_NAME}
     tinyusb_board
     tinyusb_device
     hardware_uart
+    # pico_async_context_threadsafe_background
 )
 pico_enable_stdio_usb(${PROJECT_NAME} 1)
 pico_enable_stdio_uart(${PROJECT_NAME} 0)

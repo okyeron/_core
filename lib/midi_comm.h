@@ -11,10 +11,15 @@ PIO pio_tx = pio2;
 uint sm_tx = 0;
 #endif
 
+#ifdef INCLUDE_MIDI
 uint32_t send_buffer_as_sysex(char* buffer, uint32_t bufsize) {
-  uint8_t sysex_data[bufsize + 2];  // +2 for SysEx start and end bytes
+  uint8_t sysex_data[bufsize + 2];  // +2 for SysEx start, +3 for manufacturer?, +1 for end byte
 
   sysex_data[0] = 0xF0;  // Start of SysEx
+  // sysex_data[1] = 0x7d; // manufacturer ID 3 bytes long,
+	// sysex_data[2] = 0x00;
+	// sysex_data[3] = 0x00;
+
   for (uint32_t i = 0; i < bufsize; i++) {
     sysex_data[i + 1] = buffer[i];  // Copy buffer into SysEx data
   }
@@ -28,13 +33,19 @@ uint32_t send_text_as_sysex(const char* text) {
   uint8_t sysex_data[text_length + 2];  // +2 for SysEx start and end bytes
 
   sysex_data[0] = 0xF0;  // Start of SysEx
+  // sysex_data[1] = 0x7d; // manufacturer ID 3 bytes long,
+	// sysex_data[2] = 0x00;
+	// sysex_data[3] = 0x00;
+
   for (uint32_t i = 0; i < text_length; i++) {
     sysex_data[i + 1] = text[i];  // Copy text into SysEx data
   }
   sysex_data[text_length + 1] = 0xF7;  // End of SysEx
 
+#ifndef DONT_SEND_SYSEX
   // Call the stream write function with the SysEx message
   return tud_midi_n_stream_write(0, 0, sysex_data, sizeof(sysex_data));
+#endif
 }
 
 void send_midi_clock() {
@@ -132,7 +143,56 @@ typedef void (*midi_comm_callback)(uint8_t, uint8_t, uint8_t, uint8_t);
 void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
                     callback_int midi_note_off, callback_void midi_start,
                     callback_void midi_continue, callback_void midi_stop,
-                    callback_void midi_timing, callback_void midi_control_change) {
+                    callback_void midi_timing, callback_uint8_uint8_uint8 midi_control_change) {
+  
+    uint8_t buff[4];
+    while (tud_midi_available())
+        tud_midi_packet_read(buff);    
+
+    uint8_t status = buff[0] & 0xf0;
+    uint8_t channel = buff[0] & 0xf;
+    uint8_t data1 = buff[1];
+    uint8_t data2 = buff[2];
+    uint8_t cable = buff[3];
+
+    switch (status)
+    {
+    case 0x90: // NOTE_ON
+        midi_note_on(data1, data2);
+        break;
+    case 0x80: // NOTE_OFF
+        midi_note_off(data1);
+        break;
+    case 0xB0: // CONTROL CHANGE
+        midi_control_change (channel, data1, data2);
+        break;
+    case 0xA0: // POLYPHONIC AFTERTOUCH
+        break;
+    case 0xD0: // CHANNEL AFTERTOUCH/PRESSURE
+        break;
+    case 0xC0: // PROGRAM_CHANGE
+        break;
+    case 0xE0: // PITCH_BEND
+        break;
+    case 0xF0: // SYSEX
+        break;
+    case 0xF8: // CLOCK
+        midi_timing();
+        break;
+    case 0xFA: // START
+        midi_start();
+        break;
+    case 0xFB: // CONTINUE
+        midi_continue();
+        break;
+    case 0xFC: // STOP
+        midi_stop();
+        break;
+    default:
+        break;
+    }
+    return;
+  /*
   uint8_t midi_buffer[3];
   midi_buffer[0] = 0;
   midi_buffer[1] = 0;
@@ -146,28 +206,28 @@ void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
   if (bytes_read == 0) {
     return;
   }
-  if (midi_buffer[0] == 0xf8) {
+  if (midi_buffer[0] == 0xf8) { // CLOCK
     // timing received
     usb_midi_present = true;
     if (midi_timing != NULL) {
       midi_timing();
     }
     return;
-  } else if (midi_buffer[0] == 0xfa) {
+  } else if (midi_buffer[0] == 0xfa) { // START
     // start received
     usb_midi_present = true;
     if (midi_start != NULL) {
       midi_start();
     }
     return;
-  } else if (midi_buffer[0] == 0xfb) {
+  } else if (midi_buffer[0] == 0xfb) { // CONTINUE
     // continue received
     usb_midi_present = true;
     if (midi_continue != NULL) {
       midi_continue();
     }
     return;
-  } else if (midi_buffer[0] == 0xfc) {
+  } else if (midi_buffer[0] == 0xfc) { // STOP
     // stop received
     usb_midi_present = true;
     if (midi_stop != NULL) {
@@ -220,18 +280,20 @@ void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
     //   ch = data[1] - 0xb0 + 1
     // }
 
-    if (status == 176 && channel == 0 && byte2 == 0) {
-      send_text_as_sysex("command=reset");
-      sleep_ms(10);
-      reset_usb_boot(0, 0);
-    } else if (status == 176 && channel == 0 && byte2 == 1) {
-      send_text_as_sysex("version=v6.3.9");
-    }
+    // if (status == 176 && channel == 0 && byte2 == 0) {
+    //   send_text_as_sysex("command=reset");
+    //   sleep_ms(10);
+    //   reset_usb_boot(0, 0);
+    // } else if (status == 176 && channel == 0 && byte2 == 1) {
+    //   send_text_as_sysex("version=v6.3.9");
+    // }
     if (callback != NULL) {
       callback(status, channel, byte2, byte3);
     }
   }
+    */
 }
-
 #define printf printf_sysex
+
+#endif
 #endif

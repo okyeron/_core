@@ -24,6 +24,8 @@
 #include "pico/bootrom.h"
 #include "pico/multicore.h"
 #include "pico/types.h"
+#include "pico/util/queue.h"
+// #include "pico/async_context_threadsafe_background.h"
 
 #ifdef INCLUDE_MIDI
 #include "tusb.h"
@@ -88,8 +90,8 @@ bool is_zeptomech = false;
 #include "random.h"
 //
 bool usb_midi_present = false;
-#ifdef INCLUDE_MIDI
 #include "midi_comm.h"
+#ifdef INCLUDE_MIDI
 #include "midi_out.h"
 #endif
 //

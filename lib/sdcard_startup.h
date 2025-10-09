@@ -329,7 +329,9 @@ bool filter_was_activated = false;
 void update_fx(uint8_t fx_num) {
 #ifdef INCLUDE_MIDI
   if (midi_input_activated) {
+#ifndef DONT_SEND_SYSEX
     printf_sysex("fx=%d,%d", fx_num, sf->fx_active[fx_num]);
+#endif
   }
 #endif
   switch (fx_num) {

@@ -55,6 +55,7 @@ uint16_t total_number_samples = 0;
 // one wire midi
 #ifdef INCLUDE_ZEPTOMECH
 volatile bool use_onewiremidi = true;
+volatile uint8_t clock_source = 0; // 0: MIDI, 1: Pulse/clock-input (do we need to change between USB/TRS?)
 #else
 volatile bool use_onewiremidi = false;
 #endif
@@ -149,11 +150,30 @@ LEDS *leds;
 LEDText *ledtext;
 #endif
 
+#ifdef INCLUDE_ZEPTOMECH
+#define UART_ID uart1
+#define UART_BAUD 31250
+// PIO pio_tx = pio2;
+// uint sm_tx = 0;
+PIO pio_rx = pio2;
+uint sm_rx = 1;
+
+// #define FIFO_RX_SIZE 64
+// #define MAX_COUNTER 10
+// static int8_t pio_irq;
+// static queue_t fifo_rx;
+// static uint32_t counter;
+// static bool work_done;
+
+#endif
+
 #ifdef INCLUDE_MIDI
 #define MIDIOUTS 6
 MidiOut *midiout[6];
 bool midi_input_activated = false;
 
+bool midi_buttons[BUTTONMATRIX_BUTTONS_MAX];
+int fx_button = -1;
  // setup some constants for CCs
 const uint8_t cc_knobx = 0;
 const uint8_t cc_knoby= 1;
@@ -172,6 +192,7 @@ const uint8_t cc_randfx = 13;
 const uint8_t cc_randfxbank = 14;
 #endif
 
+
 bool toggle_chain_play = false;
 bool toggle_chain_rec = false;
 
@@ -183,7 +204,7 @@ uint8_t dub_step_beat = 0;
 volatile uint8_t sel_variation = 0;
 volatile int8_t sel_variation_next = 0;
 bool sel_variation_fadeout = false;
-uint8_t global_brightness = 50;  // 0 - 100
+uint8_t global_brightness = 100;  // 0 - 100
 bool global_amen_cv_bipolar = true;
 #define AMEN_CV_BEHAVIOR_JUMP 0
 #define AMEN_CV_BEHAVIOR_REPEAT 1
@@ -468,7 +489,9 @@ void do_update_phase_from_beat_current() {
       slice;
 #ifdef INCLUDE_MIDI
   if (midi_input_activated) {
+#ifndef DONT_SEND_SYSEX
     printf_sysex("slice=%d", slice);
+#endif
   }
 #endif
   if (phase_forward) {

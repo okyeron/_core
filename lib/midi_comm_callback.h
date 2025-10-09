@@ -90,13 +90,17 @@ void midi_comm_callback_fn(uint8_t status, uint8_t channel, uint8_t note,
     }
   } else {
     if (note == 3) {
+#ifndef DONT_SEND_SYSEX
       printf_sysex(
           "slices=%d",
           banks[sel_bank_cur]->sample[sel_sample_cur].snd[FILEZERO]->slice_num);
+#endif
     } else if (note == 4) {
+#ifndef DONT_SEND_SYSEX
       printf_sysex("info=%d,%d,%d,%d,%d,%d,%d", sel_bank_cur, sel_sample_cur,
                    sf->bpm_tempo, sf->vol, midi_comm_callback_do_retrigger,
                    playback_stopped, button_mute);
+#endif
     }
   }
 }

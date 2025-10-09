@@ -16,6 +16,28 @@
 #include "ssd1306.h"
 #endif
 
+void clockPulseUpdate(ClockInput *clockinput){
+#ifdef INCLUDE_CLOCKINPUT
+    if (!use_onewiremidi && clock_source == 1) {
+      // clock input handler
+      ClockInput_update(clockinput);
+      if (clock_in_do) {
+        clock_input_absent_zeptocore =
+            ClockInput_timeSinceLast(clockinput) > 1000000;
+      }
+      if (!clock_start_stop_sync && clock_in_do) {
+        if ((time_us_32() - clock_in_last_time) > 2 * clock_in_diff_2x) {
+          clock_in_ready = false;
+          clock_in_do = false;
+          clock_in_activator = 0;
+        }
+      }
+    } else {
+      // Onewiremidi_receive(onewiremidi);
+    }
+#endif  
+}
+
 void printStringWithDelay(char *str) {
   int len = strlen(str);
   for (int i = 0; i < len; i++) {
@@ -124,10 +146,14 @@ void __not_in_flash_func(input_handling)() {
   uint8_t new_vol;
   ClockInput *clockinput = NULL;
   Onewiremidi *onewiremidi = NULL;
+
   if (use_onewiremidi) {
     // setup one wire midi
+    // uint rx_offset = pio_add_program(pio_rx, &uart_rx_program);
+    // uart_rx_program_init(pio_rx, sm_rx, rx_offset, UART1_RX, UART_BAUD);
+
     onewiremidi =
-        Onewiremidi_new(pio0, 3, UART1_RX, midi_note_on, midi_note_off,
+        Onewiremidi_new(pio_rx, sm_rx, UART1_RX, midi_note_on, midi_note_off,
                         midi_start, midi_continue, midi_stop, midi_timing, midi_control_change);
   } else {
     clockinput = ClockInput_create(CLOCK_INPUT_GPIO, clock_handling_up,
@@ -214,6 +240,9 @@ void __not_in_flash_func(input_handling)() {
     midi_comm_task(midi_comm_callback_fn, midi_note_on, midi_note_off,
                    midi_start, midi_continue, midi_stop, midi_timing, midi_control_change);
 #endif
+    // Onewiremidi_receive(onewiremidi); // receive incoming TRS MIDI
+    // midi_read_poll();
+    process_midi();
 
     if (do_switch_between_clock_and_midi) {
       do_switch_between_clock_and_midi = false;
@@ -225,13 +254,13 @@ void __not_in_flash_func(input_handling)() {
         //     ClockInput_create(CLOCK_INPUT_GPIO, clock_handling_up,
         //                       clock_handling_down, clock_handling_start);
       } else {
-        // switch to one wire midi
-        ClockInput_destroy(clockinput);
-        onewiremidi = Onewiremidi_new(pio0, 3, CLOCK_INPUT_GPIO, midi_note_on,
-                                      midi_note_off, midi_start, midi_continue,
-                                      midi_stop, midi_timing, midi_control_change);
+        // // switch to one wire midi
+        // ClockInput_destroy(clockinput);
+        // onewiremidi = Onewiremidi_new(pio0, 3, CLOCK_INPUT_GPIO, midi_note_on,
+        //                               midi_note_off, midi_start, midi_continue,
+        //                               midi_stop, midi_timing, midi_control_change);
       }
-      use_onewiremidi = !use_onewiremidi;
+      // use_onewiremidi = !use_onewiremidi;
     }
 
     // if in startup deduct
@@ -278,24 +307,28 @@ void __not_in_flash_func(input_handling)() {
 #endif
 
 #ifdef INCLUDE_CLOCKINPUT
-    if (!use_onewiremidi) {
-      // clock input handler
-      ClockInput_update(clockinput);
-      if (clock_in_do) {
-        clock_input_absent_zeptocore =
-            ClockInput_timeSinceLast(clockinput) > 1000000;
-      }
-      if (!clock_start_stop_sync && clock_in_do) {
-        if ((time_us_32() - clock_in_last_time) > 2 * clock_in_diff_2x) {
-          clock_in_ready = false;
-          clock_in_do = false;
-          clock_in_activator = 0;
-        }
-      }
-    } else {
-      Onewiremidi_receive(onewiremidi);
-    }
+  clockPulseUpdate(clockinput);
 #endif
+
+// #ifdef INCLUDE_CLOCKINPUT
+//     if (!use_onewiremidi) {
+//       // clock input handler
+//       ClockInput_update(clockinput);
+//       if (clock_in_do) {
+//         clock_input_absent_zeptocore =
+//             ClockInput_timeSinceLast(clockinput) > 1000000;
+//       }
+//       if (!clock_start_stop_sync && clock_in_do) {
+//         if ((time_us_32() - clock_in_last_time) > 2 * clock_in_diff_2x) {
+//           clock_in_ready = false;
+//           clock_in_do = false;
+//           clock_in_activator = 0;
+//         }
+//       }
+//     } else {
+//       // Onewiremidi_receive(onewiremidi);
+//     }
+// #endif
 
     if (MessageSync_hasMessage(messagesync)) {
       MessageSync_print(messagesync);
@@ -407,7 +440,7 @@ void __not_in_flash_func(input_handling)() {
 
     int adc;
 
-#ifdef INCLUDE_KNOBS
+#ifdef INCLUDE_KNOBS  // knob X
     // knob X
     uint16_t adc_raw = adc_read();
     adc = FilterExp_update(adcs[knobX], adc_raw);
@@ -510,7 +543,7 @@ void __not_in_flash_func(input_handling)() {
     if (sample_selection_index_last != sample_selection_index) {
       printf("sample_selection_index: %d\n", sample_selection_index);
       sample_selection_index_last = sample_selection_index;
-      debounce_sample_selection = 4;
+      debounce_sample_selection = 40;
     } else if (debounce_sample_selection > 0) {
       debounce_sample_selection--;
       if (debounce_sample_selection == 0) {
@@ -532,29 +565,30 @@ void __not_in_flash_func(input_handling)() {
     if (!is_arcade_box) button_handler(bm);
 #endif
 
-#ifdef INCLUDE_CLOCKINPUT
-    if (!use_onewiremidi) {
-      // clock input handler
-      ClockInput_update(clockinput);
-      if (clock_in_do) {
-        clock_input_absent_zeptocore =
-            ClockInput_timeSinceLast(clockinput) > 1000000;
-      }
-      if (!clock_start_stop_sync && clock_in_do) {
-        if ((time_us_32() - clock_in_last_time) > 2 * clock_in_diff_2x) {
-          clock_in_ready = false;
-          clock_in_do = false;
-          clock_in_activator = 0;
-        }
-      }
-    } else {
-      Onewiremidi_receive(onewiremidi);
-    }
-#endif
+clockPulseUpdate(clockinput);
+// #ifdef INCLUDE_CLOCKINPUT
+//     if (!use_onewiremidi) {
+//       // clock input handler
+//       ClockInput_update(clockinput);
+//       if (clock_in_do) {
+//         clock_input_absent_zeptocore =
+//             ClockInput_timeSinceLast(clockinput) > 1000000;
+//       }
+//       if (!clock_start_stop_sync && clock_in_do) {
+//         if ((time_us_32() - clock_in_last_time) > 2 * clock_in_diff_2x) {
+//           clock_in_ready = false;
+//           clock_in_do = false;
+//           clock_in_activator = 0;
+//         }
+//       }
+//     } else {
+//       // Onewiremidi_receive(onewiremidi);
+//     }
+// #endif
 
     break_fx_update();
 
-#ifdef INCLUDE_KNOBS
+#ifdef INCLUDE_KNOBS  // knob Y
     // knob Y
     adc_select_input(knobY);
     adc = FilterExp_update(adcs[knobY], adc_read());
@@ -664,57 +698,59 @@ void __not_in_flash_func(input_handling)() {
     }
 #endif
 
-#ifdef INCLUDE_CLOCKINPUT
-    if (!use_onewiremidi) {
-      // clock input handler
-      ClockInput_update(clockinput);
-      if (clock_in_do) {
-        clock_input_absent_zeptocore =
-            ClockInput_timeSinceLast(clockinput) > 1000000;
-      }
-      if (!clock_start_stop_sync && clock_in_do) {
-        if ((time_us_32() - clock_in_last_time) > 2 * clock_in_diff_2x) {
-          clock_in_ready = false;
-          clock_in_do = false;
-          clock_in_activator = 0;
-        }
-      }
-    } else {
-      Onewiremidi_receive(onewiremidi);
-    }
-#endif
+clockPulseUpdate(clockinput);
+// #ifdef INCLUDE_CLOCKINPUT
+//     if (!use_onewiremidi) {
+//       // clock input handler
+//       ClockInput_update(clockinput);
+//       if (clock_in_do) {
+//         clock_input_absent_zeptocore =
+//             ClockInput_timeSinceLast(clockinput) > 1000000;
+//       }
+//       if (!clock_start_stop_sync && clock_in_do) {
+//         if ((time_us_32() - clock_in_last_time) > 2 * clock_in_diff_2x) {
+//           clock_in_ready = false;
+//           clock_in_do = false;
+//           clock_in_activator = 0;
+//         }
+//       }
+//     } else {
+//       // Onewiremidi_receive(onewiremidi);
+//     }
+// #endif
 
 #ifdef BTN_COL_START
     if (!is_arcade_box) button_handler(bm);
 #endif
 
-#ifdef INCLUDE_CLOCKINPUT
-    if (!use_onewiremidi) {
-      // clock input handler
-      ClockInput_update(clockinput);
-      if (clock_in_do) {
-        clock_input_absent_zeptocore =
-            ClockInput_timeSinceLast(clockinput) > 1000000;
-      }
-      if (!clock_start_stop_sync && clock_in_do) {
-        if ((time_us_32() - clock_in_last_time) > 2 * clock_in_diff_2x) {
-          clock_in_ready = false;
-          clock_in_do = false;
-          clock_in_activator = 0;
-        }
-      }
-    } else {
-      Onewiremidi_receive(onewiremidi);
-    }
-#endif
+clockPulseUpdate(clockinput);
+// #ifdef INCLUDE_CLOCKINPUT
+//     if (!use_onewiremidi) {
+//       // clock input handler
+//       ClockInput_update(clockinput);
+//       if (clock_in_do) {
+//         clock_input_absent_zeptocore =
+//             ClockInput_timeSinceLast(clockinput) > 1000000;
+//       }
+//       if (!clock_start_stop_sync && clock_in_do) {
+//         if ((time_us_32() - clock_in_last_time) > 2 * clock_in_diff_2x) {
+//           clock_in_ready = false;
+//           clock_in_do = false;
+//           clock_in_activator = 0;
+//         }
+//       }
+//     } else {
+//       // Onewiremidi_receive(onewiremidi);
+//     }
+// #endif
 
 #ifdef INCLUDE_KNOBS
     // knob Z
     adc_select_input(knobZ);
     adc = FilterExp_update(adcs[knobZ], adc_read());
-    if (adc < 55){
-      adc = 0;
-    }
+    // if (adc < 55){
+    //   adc = 0;
+    // }
     if (abs(adc_last[knobZ] - adc) > adc_threshold) {
       adc_debounce[knobZ] = adc_debounce_max;
     }
@@ -790,7 +826,8 @@ void __not_in_flash_func(input_handling)() {
 #endif
         }
       } else {
-        ws2812_set_wheel(ws2812, adc * 4, 255, 255, 0);
+        // what is this about???
+        ws2812_set_wheel(ws2812, adc * 4, 0, 0, 0); 
       }
     }
 #endif
@@ -868,8 +905,23 @@ void __not_in_flash_func(input_handling)() {
             // <dj_style_filter>
             for (uint8_t channel = 0; channel < 2; channel++) {
 #ifdef INCLUDE_ZEPTOMECH
-              int filter_spacing = 16;
-              for (uint8_t channel = 0; channel < 2; channel++) {
+              if (button_is_pressed(KEY_A)) {
+                  global_filter_index = adcValue * (resonantfilter_fc_max) / 256;
+                  global_filter_lphp = 0;
+                  ResonantFilter_setFilterType(resFilter[channel], global_filter_lphp);
+                  ResonantFilter_setFc(resFilter[channel], global_filter_index);
+              } 
+              else if (button_is_pressed(KEY_B))
+              {
+                 global_filter_index = adcValue * (resonantfilter_fc_max) / 256;
+                  global_filter_lphp = 1;
+                  ResonantFilter_setFilterType(resFilter[channel], global_filter_lphp);
+                  ResonantFilter_setFc(resFilter[channel], global_filter_index);
+              }
+              else
+              {
+                int filter_spacing = 8;
+              // for (uint8_t channel = 0; channel < 2; channel++) {
                 if (adcValue < 128 - filter_spacing) {
                   global_filter_index =
                     adcValue * (resonantfilter_fc_max) / (128 - filter_spacing);
@@ -892,8 +944,9 @@ void __not_in_flash_func(input_handling)() {
                                 global_filter_lphp);
                   ResonantFilter_setFc(resFilter[channel], resonantfilter_fc_max);
                 }
+              // }
               }
-              #else
+#else
               if (adcValue < 128) {
                 if (adcValue < 5) {
                   global_filter_index = resonantfilter_fc_max;
@@ -919,7 +972,7 @@ void __not_in_flash_func(input_handling)() {
                                              global_filter_lphp);
                 ResonantFilter_setFc(resFilter[channel], resonantfilter_fc_max);
               }
-              #endif
+#endif
             }
             clear_debouncers();
             DebounceUint8_set(debouncer_uint8[DEBOUNCE_UINT8_LED_SPIRAL1],
@@ -976,26 +1029,28 @@ void __not_in_flash_func(input_handling)() {
     if (!is_arcade_box) button_handler(bm);
 #endif
 
-#ifdef INCLUDE_CLOCKINPUT
-    if (!use_onewiremidi) {
-      // clock input handler
-      ClockInput_update(clockinput);
-      if (clock_in_do) {
-        clock_input_absent_zeptocore =
-            ClockInput_timeSinceLast(clockinput) > 1000000;
-      }
-      if (!clock_start_stop_sync && clock_in_do) {
-        if ((time_us_32() - clock_in_last_time) > 2 * clock_in_diff_2x) {
-          clock_in_ready = false;
-          clock_in_do = false;
-          clock_in_activator = 0;
-        }
-      }
-    } else {
-      Onewiremidi_receive(onewiremidi);
-    }
-#endif
+clockPulseUpdate(clockinput);
+// #ifdef INCLUDE_CLOCKINPUT
+//     if (!use_onewiremidi) {
+//       // clock input handler
+//       ClockInput_update(clockinput);
+//       if (clock_in_do) {
+//         clock_input_absent_zeptocore =
+//             ClockInput_timeSinceLast(clockinput) > 1000000;
+//       }
+//       if (!clock_start_stop_sync && clock_in_do) {
+//         if ((time_us_32() - clock_in_last_time) > 2 * clock_in_diff_2x) {
+//           clock_in_ready = false;
+//           clock_in_do = false;
+//           clock_in_activator = 0;
+//         }
+//       }
+//     } else {
+//       // Onewiremidi_receive(onewiremidi);
+//     }
+// #endif
 
+clockPulseUpdate(clockinput);
 // #ifdef INCLUDE_CLOCKINPUT
 //     if (!use_onewiremidi) {
 //       // clock input handler
