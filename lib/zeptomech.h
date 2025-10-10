@@ -4,7 +4,7 @@
 #include "break_knob.h"
 #include "midicallback.h"
 #ifdef INCLUDE_ZEPTOMECH
-#include "onewiremidi2.h"
+#include "onewiremidi3.h"
 #else
 #include "onewiremidi.h"
 #endif
