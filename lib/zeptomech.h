@@ -232,16 +232,16 @@ void __not_in_flash_func(input_handling)() {
   bool sel_sample_knob_ready = false;
   clock_start_stop_sync = true;
 
-
   // WHILE LOOP
   while (1) {
 #ifdef INCLUDE_MIDI
+    // PROCESS INCOMING USB MIDI
     tud_task();
-    midi_comm_task(midi_comm_callback_fn, midi_note_on, midi_note_off,
-                   midi_start, midi_continue, midi_stop, midi_timing, midi_control_change);
+    midi_comm_task(midi_comm_callback_fn, midi_note_on, midi_note_off,  
+                  midi_start, midi_continue, midi_stop, midi_timing, 
+                  midi_control_change);
 #endif
-    // Onewiremidi_receive(onewiremidi); // receive incoming TRS MIDI
-    // midi_read_poll();
+    // PROCESS INCOMING HARDWARE TRS MIDI
     process_midi();
 
     if (do_switch_between_clock_and_midi) {

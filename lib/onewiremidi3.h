@@ -292,7 +292,7 @@ void process_midi(){
 
     case 0xc0: // Program change
       //  printf("program change\n");
-      midi_onProgramChange(d0, channel);
+      // midi_onProgramChange(d0, channel);
       break;
 
   	case 0x80: // note off

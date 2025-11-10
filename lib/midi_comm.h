@@ -42,10 +42,10 @@ uint32_t send_text_as_sysex(const char* text) {
   }
   sysex_data[text_length + 1] = 0xF7;  // End of SysEx
 
-#ifndef DONT_SEND_SYSEX
+// #ifndef DONT_SEND_SYSEX
   // Call the stream write function with the SysEx message
   return tud_midi_n_stream_write(0, 0, sysex_data, sizeof(sysex_data));
-#endif
+// #endif
 }
 
 void send_midi_clock() {
@@ -145,15 +145,24 @@ void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
                     callback_void midi_continue, callback_void midi_stop,
                     callback_void midi_timing, callback_uint8_uint8_uint8 midi_control_change) {
   
-    uint8_t buff[4];
-    while (tud_midi_available())
-        tud_midi_packet_read(buff);    
-
-    uint8_t status = buff[0] & 0xf0;
-    uint8_t channel = buff[0] & 0xf;
+    uint8_t buff[3]; // buff[4] for tud_midi_packet_read
+    uint32_t bytes_read = 0;
+    // while (tud_midi_available())
+    //     tud_midi_packet_read(buff);
+    if (tud_midi_available()){
+      bytes_read = tud_midi_stream_read(buff, 3);
+    } else {
+      return;
+    }
+    if (bytes_read == 0) {
+      return;
+    }
+    
+    uint8_t status = buff[0] & 0xF0;
+    uint8_t channel = buff[0] & 0xF;
     uint8_t data1 = buff[1];
     uint8_t data2 = buff[2];
-    uint8_t cable = buff[3];
+    // uint8_t cable = buff[3];
 
     switch (status)
     {

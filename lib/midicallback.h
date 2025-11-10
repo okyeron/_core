@@ -18,6 +18,21 @@ uint32_t midi_delta_count = 0;
 uint32_t midi_timing_count = 0;
 const uint8_t midi_timing_modulus = 24;
 
+void midi_note_on(int note, int velocity) {
+  WaveBass_note_on(wavebass, note);
+#ifdef DEBUG_MIDI
+  printf("note_on: %d\n", note);
+#endif
+#if MIDI_NOTE_KEY == 1
+  if (midi_button1 > -1) {
+    midi_button2 = note % NUM_BUTTONS;
+  } else {
+    midi_button1 = note % NUM_BUTTONS;
+  }
+  input_button[note % NUM_BUTTONS].Set(true);
+#endif
+}
+
 void midi_note_off(int note) {
   WaveBass_release(wavebass);
 #ifdef DEBUG_MIDI
@@ -33,19 +48,33 @@ void midi_note_off(int note) {
 #endif
 }
 
-void midi_note_on(int note, int velocity) {
-  WaveBass_note_on(wavebass, note);
+void midi_start() {
 #ifdef DEBUG_MIDI
-  printf("note_on: %d\n", note);
+  printf("[midicallback] midi start\n");
 #endif
-#if MIDI_NOTE_KEY == 1
-  if (midi_button1 > -1) {
-    midi_button2 = note % NUM_BUTTONS;
-  } else {
-    midi_button1 = note % NUM_BUTTONS;
-  }
-  input_button[note % NUM_BUTTONS].Set(true);
+  midi_timing_count = 24 * MIDI_RESET_EVERY_BEAT - 1;
+  cancel_repeating_timer(&timer);
+  do_restart_playback = true;
+  timer_step();
+  update_repeating_timer_to_bpm(sf->bpm_tempo);
+  button_mute = false;
+  trigger_button_mute = false;
+}
+
+void midi_continue() {
+#ifdef DEBUG_MIDI
+  printf("[midicallback] midi continue (starting)\n");
 #endif
+  midi_start();
+}
+
+void midi_stop() {
+#ifdef DEBUG_MIDI
+  printf("[midicallback] midi stop\n");
+#endif
+  midi_timing_count = 24 * MIDI_RESET_EVERY_BEAT - 1;
+  trigger_button_mute = true;
+  do_stop_playback = true;
 }
 
 void midi_control_change (uint8_t channel, uint8_t control, uint8_t value) {
@@ -193,36 +222,10 @@ void midi_control_change (uint8_t channel, uint8_t control, uint8_t value) {
   }
 
 }
-void midi_onProgramChange(uint8_t programNumber, uint8_t channel){
-  // what does program change do?
-}
+// void midi_onProgramChange(uint8_t programNumber, uint8_t channel){
+//   // what does program change do?
+// }
 
-void midi_start() {
-#ifdef DEBUG_MIDI
-  printf("[midicallback] midi start\n");
-#endif
-  midi_timing_count = 24 * MIDI_RESET_EVERY_BEAT - 1;
-  cancel_repeating_timer(&timer);
-  do_restart_playback = true;
-  timer_step();
-  update_repeating_timer_to_bpm(sf->bpm_tempo);
-  button_mute = false;
-  trigger_button_mute = false;
-}
-void midi_continue() {
-#ifdef DEBUG_MIDI
-  printf("[midicallback] midi continue (starting)\n");
-#endif
-  midi_start();
-}
-void midi_stop() {
-#ifdef DEBUG_MIDI
-  printf("[midicallback] midi stop\n");
-#endif
-  midi_timing_count = 24 * MIDI_RESET_EVERY_BEAT - 1;
-  trigger_button_mute = true;
-  do_stop_playback = true;
-}
 
 // Comparator function for qsort
 int compare_ints(const void *a, const void *b) {
@@ -251,6 +254,7 @@ void midi_timing() {
     printf("[midicallback] midi resetting\n");
 #endif
     clock_in_beat_total = -1;
+    clock_in_beat_last = -1;
   }
   if (midi_timing_count % (midi_timing_modulus / MIDI_CLOCK_MULTIPLIER) == 0) {
     // soft sync
