@@ -145,10 +145,9 @@ void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
                     callback_void midi_continue, callback_void midi_stop,
                     callback_void midi_timing, callback_uint8_uint8_uint8 midi_control_change) {
   
-    uint8_t buff[3]; // buff[4] for tud_midi_packet_read
+    uint8_t buff[3]; // buff[3] for tud_midi_stream_read, buff[4] for tud_midi_packet_read (?)
     uint32_t bytes_read = 0;
-    // while (tud_midi_available())
-    //     tud_midi_packet_read(buff);
+
     if (tud_midi_available()){
       bytes_read = tud_midi_stream_read(buff, 3);
     } else {
@@ -158,7 +157,7 @@ void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
       return;
     }
     
-    uint8_t status = buff[0] & 0xF0;
+    uint8_t status = buff[0];// & 0xF0;
     uint8_t channel = buff[0] & 0xF;
     uint8_t data1 = buff[1];
     uint8_t data2 = buff[2];
@@ -166,22 +165,22 @@ void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
 
     switch (status)
     {
-    case 0x90: // NOTE_ON
+    case 0x90 & 0xF0: // NOTE_ON
         midi_note_on(data1, data2);
         break;
-    case 0x80: // NOTE_OFF
+    case 0x80 & 0xF0: // NOTE_OFF
         midi_note_off(data1);
         break;
-    case 0xB0: // CONTROL CHANGE
+    case 0xB0 & 0xF0: // CONTROL CHANGE
         midi_control_change (channel, data1, data2);
         break;
-    case 0xA0: // POLYPHONIC AFTERTOUCH
+    case 0xA0 & 0xF0: // POLYPHONIC AFTERTOUCH
         break;
-    case 0xD0: // CHANNEL AFTERTOUCH/PRESSURE
+    case 0xD0 & 0xF0: // CHANNEL AFTERTOUCH/PRESSURE
         break;
-    case 0xC0: // PROGRAM_CHANGE
+    case 0xC0 & 0xF0: // PROGRAM_CHANGE
         break;
-    case 0xE0: // PITCH_BEND
+    case 0xE0 & 0xF0: // PITCH_BEND
         break;
     case 0xF0: // SYSEX
         break;
