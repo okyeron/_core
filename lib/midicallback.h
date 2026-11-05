@@ -269,6 +269,12 @@ int findMedian(int arr[], uint8_t size) {
 }
 
 void midi_timing() {
+#ifdef INCLUDE_ZEPTOMECH
+  // the clock jack takes precedence while it receives pulses
+  if (clock_jack_active) {
+    return;
+  }
+#endif
   midi_timing_count++;
   if (midi_timing_count % (24 * MIDI_RESET_EVERY_BEAT) == 0) {
     // reset

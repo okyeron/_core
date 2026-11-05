@@ -14,7 +14,9 @@
 #include "hardware/i2c.h"
 #include "hardware/pio.h"
 #include "hardware/pll.h"
+#ifndef INCLUDE_ZEPTOMECH  // zeptomech's RP2350 has no RTC
 #include "hardware/rtc.h"
+#endif
 #include "hardware/structs/clocks.h"
 #include "hardware/sync.h"
 #include "hardware/watchdog.h"
@@ -30,9 +32,14 @@
 #include "bsp/board.h"
 #include "tusb.h"
 #endif
+#ifdef INCLUDE_ZEPTOMECH
+#include "hardware/timer.h"
+#include "hardware/uart.h"
+#include "uart_tx.pio.h"
+#endif
 //
 bool is_arcade_box = false;
-
+bool is_zeptomech = false;
 //
 #include "definitions.h"
 //
@@ -89,7 +96,11 @@ bool is_arcade_box = false;
 //
 bool usb_midi_present = false;
 #ifdef INCLUDE_MIDI
+#ifdef INCLUDE_ZEPTOMECH
+#include "midi_comm_zeptomech.h"
+#else
 #include "midi_comm.h"
+#endif
 #include "midi_out.h"
 #endif
 //
@@ -147,6 +158,9 @@ bool usb_midi_present = false;
 #endif
 #include "noise.h"
 #include "resonantfilter.h"
+#ifdef INCLUDE_ZEPTOMECH
+#include "zeptomech_leds.h"
+#endif
 #ifdef INCLUDE_SINEBASS
 #include "wavetablebass.h"
 #endif

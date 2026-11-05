@@ -28,6 +28,9 @@ typedef struct LEDS {
   int8_t gpio_leds_pin[4];
   uint8_t gpio_leds_set;
   uint8_t gpio_leds_set_last;
+#ifdef INCLUDE_ZEPTOMECH
+  uint16_t rgb_leds_counter[LED_COUNT];
+#endif
 } LEDS;
 
 LEDS *LEDS_create() {
@@ -57,6 +60,7 @@ LEDS *LEDS_create() {
   leds->gpio_leds_pin[3] = LED_4_GPIO;
 #endif
 
+#ifndef INCLUDE_ZEPTOMECH
   if (!is_arcade_box) {
     // my unique PCA9552 wiring requires a unique mapping
     uint8_t row_map[] = {// row 1
@@ -108,6 +112,7 @@ LEDS *LEDS_create() {
     gpio_set_dir(leds->gpio_leds_pin[i], GPIO_OUT);
     gpio_put(leds->gpio_leds_pin[i], 0);
   }
+#endif
 
   return leds;
 }
@@ -124,8 +129,13 @@ void LEDS_clear(LEDS *leds) {
     }
   }
 }
+#ifdef INCLUDE_ZEPTOMECH
+extern void LEDS_render_forward_zeptomech(LEDS* leds);
+#endif
 
 void LEDS_render(LEDS *leds) {
+
+#ifndef INCLUDE_ZEPTOMECH
   // light up the PCA9552
   for (uint8_t i = 1; i < LEDS_ROWS; i++) {
     for (uint8_t j = 0; j < LEDS_COLS; j++) {
@@ -163,6 +173,9 @@ void LEDS_render(LEDS *leds) {
       }
     }
   }
+#else
+  LEDS_render_forward_zeptomech(leds);
+#endif
 
   if (is_arcade_box) {
     if (leds->gpio_leds_set != leds->gpio_leds_set_last) {

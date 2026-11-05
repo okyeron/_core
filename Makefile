@@ -75,6 +75,7 @@ zeptocore_128: CORE_COMPILE_DEFINITIONS = $(CURDIR)/lib/cmake/zeptocore_compile_
 zeptocore_256: CORE_COMPILE_DEFINITIONS = $(CURDIR)/lib/cmake/zeptocore_compile_definitions_256.cmake
 zeptocore_nooverclock: CORE_NO_OVERCLOCK = ON
 zeptoboard: CORE_COMPILE_DEFINITIONS = $(CURDIR)/lib/cmake/zeptoboard_compile_definitions.cmake
+zeptomech: CORE_COMPILE_DEFINITIONS = $(CURDIR)/lib/cmake/zeptomech_compile_definitions.cmake
 ectocore: CORE_COMPILE_DEFINITIONS = $(CURDIR)/lib/cmake/ectocore_compile_definitions.cmake
 ectocore_128: CORE_COMPILE_DEFINITIONS = $(CURDIR)/lib/cmake/ectocore_compile_definitions_128.cmake
 ectocore_64: CORE_COMPILE_DEFINITIONS = $(CURDIR)/lib/cmake/ectocore_compile_definitions_64.cmake
@@ -90,6 +91,19 @@ ezeptocore_256: CORE_COMPILE_DEFINITIONS = $(CURDIR)/lib/cmake/ezeptocore_compil
 ezeptocore_noclock: CORE_COMPILE_DEFINITIONS = $(CURDIR)/lib/cmake/ezeptocore_compile_definitions_nooverclock.cmake
 ezeptocore_noclock_128: CORE_COMPILE_DEFINITIONS = $(CURDIR)/lib/cmake/ezeptocore_compile_definitions_nooverclock_128.cmake
 ezeptocore_noclock_256: CORE_COMPILE_DEFINITIONS = $(CURDIR)/lib/cmake/ezeptocore_compile_definitions_nooverclock_256.cmake
+
+# Zeptomech is RP2350. CMake caches the platform, so build/Makefile clears the
+# cache before configuring, and it is cleared again afterwards (even when the
+# build fails) so RP2040 targets do not inherit the RP2350 configuration.
+.PHONY: zeptomech upload-zeptomech
+zeptomech: CORE_CMAKE_OPTIONS += -DPICO_BOARD=board-zeptomech-rp2350 -DPICO_BOARD_HEADER_DIRS="$(CURDIR)/lib/boards"
+zeptomech: pico-sdk pico-extras ensure_arm_toolchain lib/fuzz.h lib/transfer_saturate2.h lib/sinewaves2.h lib/crossfade4_441.h lib/resonantfilter_data.h lib/cuedsounds.h build/Makefile
+	$(MAKE) -C build -j$(NPROCS) || { rm -f build/CMakeCache.txt; exit 1; }
+	cp build/_core.uf2 zeptomech.uf2
+	rm -f build/CMakeCache.txt
+
+upload-zeptomech: zeptomech
+	$(MAKE) upload-built UPLOAD_UF2=zeptomech.uf2 PICOTOOL_LOAD_FLAGS="--family rp2350-arm-s -f -x -v"
 
 # Sequential submakes keep upload after the successful build, even with make -j.
 .PHONY: zeptocore-visualizer ezeptocore-visualizer ectocore-visualizer

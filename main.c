@@ -2,6 +2,41 @@
 
 #include "lib/includes.h"
 
+#ifdef INCLUDE_ZEPTOMECH
+// zeptomech shows the zeptocore led states on its ws2812 strip
+// (called from LEDS_render)
+void LEDS_render_forward_zeptomech(LEDS *leds) {
+#ifdef INCLUDE_RGBLED
+  int k = 0;
+  for (uint8_t i = 0; i < LEDS_ROWS; i++) {
+    for (uint8_t j = 0; j < LEDS_COLS; j++) {
+      // LED_NONE / LED_DIM / LED_BRIGHT scale directly
+      int val = leds->state[i][j] * 75;
+
+      // blink leds
+      int blinkval = 3 * 75;
+      blink_time = 70;
+      if (leds->state[i][j] == LED_BLINK) {
+        leds->rgb_leds_counter[k]++;
+        if (leds->rgb_leds_counter[k] == blink_time) {
+          // set led
+          WS2812_fill(ws2812, k, blinkval, blinkval, blinkval);
+        } else if (leds->rgb_leds_counter[k] >= blink_time * 2) {
+          // clear led
+          WS2812_fill(ws2812, k, 0, 0, 0);
+          leds->rgb_leds_counter[k] = 0;
+        }
+      } else {
+        WS2812_fill(ws2812, k, val, val, val);
+      }
+      k++;
+    }
+  }
+  WS2812_show(ws2812);
+#endif
+}
+#endif
+
 // static uint8_t dub_step_numerator[] = {1, 1, 1, 1, 1, 1, 1, 1};
 // static uint8_t dub_step_denominator[] = {2, 3, 4, 8, 8, 12, 12, 16};
 // static uint8_t dub_step_steps[] = {8, 12, 16, 32, 16, 16};
@@ -734,7 +769,11 @@ bool __not_in_flash_func(repeating_timer_callback)(struct repeating_timer *t) {
 }
 
 #ifdef INCLUDE_ZEPTOCORE
-#include "lib/zeptocore.h"
+  #ifdef INCLUDE_ZEPTOMECH
+    #include "lib/zeptomech.h"
+  #else
+    #include "lib/zeptocore.h"
+  #endif
 #endif
 #ifdef INCLUDE_ECTOCORE
 #include "lib/ectocore.h"
@@ -744,6 +783,10 @@ bool __not_in_flash_func(repeating_timer_callback)(struct repeating_timer *t) {
 #endif
 
 int main() {
+#ifdef INCLUDE_ZEPTOMECH
+  // zeptomech (RP2350) keeps its default 150MHz system and 48MHz usb clocks
+  stdio_init_all();
+#else
   // Set PLL_USB 96MHz
   const uint32_t main_line = 96;
   pll_init(pll_usb, 1, main_line * 16 * MHZ, 4, 4);
@@ -776,15 +819,18 @@ int main() {
 #else
   set_sys_clock_khz(125000, true);
 #endif
+#endif
   ZD_CALL(zd_init(clock_get_hz(clk_sys), SAMPLES_PER_BUFFER));
   sleep_ms(75);
 
   // DCDC PSM control
   // 0: PFM mode (best efficiency)
   // 1: PWM mode (improved ripple)
+#ifndef INCLUDE_ZEPTOMECH  // zeptomech uses GPIO 23 for an led
   gpio_init(PIN_DCDC_PSM_CTRL);
   gpio_set_dir(PIN_DCDC_PSM_CTRL, GPIO_OUT);
   gpio_put(PIN_DCDC_PSM_CTRL, 1);  // PWM mode for less Audio noise
+#endif
 
 #ifdef INCLUDE_ZEPTOCORE
   i2c_init(i2c_default, 50 * 1000);
@@ -828,9 +874,35 @@ int main() {
   }
 #endif
 
+#ifdef INCLUDE_ZEPTOMECH
+  is_zeptomech = true;
+#endif
+
 #ifdef LED_TOP_GPIO
   gpio_init(LED_TOP_GPIO);
   gpio_set_dir(LED_TOP_GPIO, GPIO_OUT);
+#endif
+
+#ifdef INCLUDE_ZEPTOMECH
+  // red led on
+  gpio_init(REDLED);
+  gpio_set_dir(REDLED, GPIO_OUT);
+  gpio_put(REDLED, true);
+  // 5v enable
+  gpio_init(FIVEVENABLE);
+  gpio_set_dir(FIVEVENABLE, GPIO_OUT);
+  gpio_put(FIVEVENABLE, true);
+
+  // hardware TRS midi in (uart1); onewiremidi3 reads it
+  uart_init(UART_ID, UART_BAUD);
+  gpio_set_function(UART1_RX, UART_FUNCSEL_NUM(UART_ID, UART1_RX));
+  uart_set_hw_flow(UART_ID, false, false);
+  uart_set_format(UART_ID, 8, 1, UART_PARITY_NONE);
+
+  // hardware TRS midi out (pio uart_tx); see send_midi_trs
+  uint offset_tx = pio_add_program(pio_tx, &uart_tx_program);
+  uart_tx_program_init(pio_tx, sm_tx, offset_tx, UART1_TX, UART_BAUD);
+  // ws2812 setup is done via INCLUDE_RGBLED
 #endif
 
 #ifdef INCLUDE_ECTOCORE
@@ -934,11 +1006,20 @@ int main() {
   resFilter[1] = ResonantFilter_create(0);
 #endif
 #ifdef INCLUDE_RGBLED
+#ifdef INCLUDE_ZEPTOMECH
+  ws2812 = WS2812_new(NEOPIXPIN, pio0, 2);
+  WS2812_set_brightness(ws2812, global_brightness);
+#else
   ws2812 = WS2812_new(23, pio0, 2);
+#endif
   sleep_ms(1);
   WS2812_fill(ws2812, 0, 0, 0, 0);
   sleep_ms(1);
   WS2812_show(ws2812);
+#ifdef INCLUDE_ZEPTOMECH
+  sleep_ms(1);
+  LEDS_clear(leds);
+#endif
   // for (uint8_t i = 0; i < 255; i++) {
   //   WS2812_fill(ws2812, i, 0, 0);
   //   WS2812_show(ws2812);

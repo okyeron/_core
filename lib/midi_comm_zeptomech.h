@@ -1,0 +1,426 @@
+// Zeptomech version of midi_comm.h (included instead of it): adds hardware
+// TRS midi out and lets printf go to usb serial instead of sysex.
+#ifndef LIB_MIDI_COMM_H
+#define LIB_MIDI_COMM_H 1
+#include <stdarg.h> // Include this header for va_start, va_end, etc.
+#include <stdio.h>  // Include for vsnprintf
+#include "visualizer_telemetry.h"
+#include "midi_receive.h"
+
+#ifdef INCLUDE_ZEPTOMECH
+// hardware TRS midi out (pio uart_tx on UART1_TX)
+PIO pio_tx = pio2;
+uint sm_tx = 0;
+
+void send_midi_trs(const uint8_t *midi_message, uint len)
+{
+  uart_tx_program_puts_len(pio_tx, sm_tx, (const char *)midi_message, len);
+}
+#endif
+
+uint32_t send_buffer_as_sysex(char *buffer, uint32_t bufsize)
+{
+  uint8_t sysex_data[bufsize + 2]; // +2 for SysEx start and end bytes
+
+  sysex_data[0] = 0xF0; // Start of SysEx
+  for (uint32_t i = 0; i < bufsize; i++)
+  {
+    sysex_data[i + 1] = buffer[i]; // Copy buffer into SysEx data
+  }
+  sysex_data[bufsize + 1] = 0xF7; // End of SysEx
+
+  return tud_midi_n_stream_write(0, 0, sysex_data, sizeof(sysex_data));
+}
+
+uint32_t send_text_as_sysex(const char *text)
+{
+  uint32_t text_length = strlen(text); // Get the length of the text
+  uint8_t sysex_data[text_length + 2]; // +2 for SysEx start and end bytes
+
+  sysex_data[0] = 0xF0; // Start of SysEx
+  for (uint32_t i = 0; i < text_length; i++)
+  {
+    sysex_data[i + 1] = text[i]; // Copy text into SysEx data
+  }
+  sysex_data[text_length + 1] = 0xF7; // End of SysEx
+
+  // Call the stream write function with the SysEx message
+  return tud_midi_n_stream_write(0, 0, sysex_data, sizeof(sysex_data));
+}
+
+void send_midi_clock()
+{
+#if ZV_ENABLED
+  zv_realtime_enqueue(0xf8);
+#else
+  // Ensure TinyUSB stack is initialized and ready
+  if (tud_ready())
+  {
+    // Construct the MIDI message
+    // MIDI Timing Clock message format: 0xF8
+    uint8_t midi_message[1];
+    midi_message[0] = 0xF8; // Timing Clock command
+
+    // Send the MIDI message
+    tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message));
+  }
+#endif
+#ifdef INCLUDE_ZEPTOMECH
+  send_midi_trs((uint8_t[1]){0xF8}, 1);
+#endif
+}
+
+void send_midi_start()
+{
+#if ZV_ENABLED
+  zv_realtime_enqueue(0xfa);
+#else
+  // Ensure TinyUSB stack is initialized and ready
+  if (tud_ready())
+  {
+    // Construct the MIDI message
+    // MIDI Start message format: 0xFA
+    uint8_t midi_message[1];
+    midi_message[0] = 0xFA; // Start command
+
+    // Send the MIDI message
+    tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message));
+  }
+#endif
+#ifdef INCLUDE_ZEPTOMECH
+  send_midi_trs((uint8_t[1]){0xFA}, 1);
+#endif
+}
+
+void send_midi_stop()
+{
+#if ZV_ENABLED
+  zv_realtime_enqueue(0xfc);
+#else
+  // Ensure TinyUSB stack is initialized and ready
+  if (tud_ready())
+  {
+    // Construct the MIDI message
+    // MIDI Stop message format: 0xFC
+    uint8_t midi_message[1];
+    midi_message[0] = 0xFC; // Stop command
+
+    // Send the MIDI message
+    tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message));
+  }
+#endif
+#ifdef INCLUDE_ZEPTOMECH
+  send_midi_trs((uint8_t[1]){0xFC}, 1);
+#endif
+}
+
+void send_midi_note_on(uint8_t note, uint8_t velocity)
+{
+  // Ensure TinyUSB stack is initialized and ready
+  if (tud_ready())
+  {
+    // MIDI cable number 0, Note On event, channel 1
+    uint8_t channel = 0; // MIDI channels are 0-15
+
+    // Construct the MIDI message
+    // MIDI Note On message format: 0x9n, where n is the channel number
+    uint8_t midi_message[3];
+    midi_message[0] = 0x90 | channel; // Note On command with channel
+    midi_message[1] = note;           // MIDI note number
+    midi_message[2] = velocity;       // Note velocity
+
+    // Send the MIDI message
+    tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message));
+  }
+#ifdef INCLUDE_ZEPTOMECH
+  send_midi_trs((uint8_t[3]){0x90, note, velocity}, 3);
+#endif
+}
+
+int printf_sysex(const char *format, ...)
+{
+  if (!tud_ready())
+  {
+    return 0;
+  }
+  va_list args;
+  va_start(args, format);
+  int text_length = vsnprintf(NULL, 0, format, args);
+  va_end(args);
+
+  char text[text_length + 1]; // +1 for null terminator
+  va_start(args, format);
+  vsnprintf(text, text_length + 1, format, args);
+  va_end(args);
+
+  return send_text_as_sysex(text);
+}
+
+typedef void (*midi_comm_callback)(uint8_t, uint8_t, uint8_t, uint8_t);
+
+#ifdef INCLUDE_ZEPTOCORE
+static char midi_command_buffer[64];
+static uint8_t midi_command_length;
+static bool midi_command_active;
+
+static void midi_command_reset(void)
+{
+  midi_command_active = false;
+  midi_command_length = 0;
+}
+
+static void midi_command_execute(midi_comm_callback callback)
+{
+  midi_command_buffer[midi_command_length] = 0;
+  const char *prefix = "core_cmd=1,";
+  if (strncmp(midi_command_buffer, prefix, strlen(prefix)) != 0)
+    return;
+  const char *operation = midi_command_buffer + strlen(prefix);
+  if (strcmp(operation, "hello") == 0)
+  {
+    send_text_as_sysex("core_caps=1");
+  }
+  else if (strcmp(operation, "version") == 0)
+  {
+    send_text_as_sysex("version=v8.1.0");
+  }
+  else if (strcmp(operation, "bootloader") == 0)
+  {
+    send_text_as_sysex("command=reset");
+    sleep_ms(10);
+    reset_usb_boot(0, 0);
+  }
+  else if (callback != NULL)
+  {
+    // Only validated SysEx can enter the existing management handlers.
+    if (strcmp(operation, "info") == 0)
+      callback(0x80, 9, 4, 0);
+    else if (strcmp(operation, "slices") == 0)
+      callback(0x80, 9, 3, 0);
+    else if (strcmp(operation, "view") == 0)
+      callback(0x80, 9, 5, 0);
+    else if (strncmp(operation, "key,", 4) == 0)
+    {
+      const char *digits = operation + 4;
+      unsigned value = 0, length = 0;
+      for (; digits[length]; ++length)
+      {
+        if (length >= 3 || digits[length] < '0' || digits[length] > '9')
+          return;
+        value = value * 10 + (unsigned)(digits[length] - '0');
+      }
+      if (length && value <= 127)
+        callback(0x80, 9, (uint8_t)value, 1);
+    }
+  }
+}
+
+static void midi_command_packet(uint8_t cin, const uint8_t *bytes,
+                                uint8_t length, midi_comm_callback callback)
+{
+  // Validate the entire USB event before consuming any of it. CIN 4 continues;
+  // CIN 5/6/7 must end in F7. Realtime packets never enter this function.
+  bool ending = cin != 4;
+  for (uint8_t i = 0; i < length; ++i)
+  {
+    uint8_t b = bytes[i];
+    if ((ending && i == length - 1) ? b != 0xf7
+                                    : (b == 0xf0 ? i != 0 : b < 0x20 || b > 0x7e))
+    {
+      midi_command_reset();
+      return;
+    }
+  }
+  for (uint8_t i = 0; i < length; ++i)
+  {
+    uint8_t b = bytes[i];
+    if (b == 0xf0)
+    {
+      midi_command_reset();
+      midi_command_active = true;
+    }
+    else if (b == 0xf7)
+    {
+      if (midi_command_active)
+        midi_command_execute(callback);
+      midi_command_reset();
+    }
+    else if (midi_command_active)
+    {
+      if (midi_command_length == sizeof midi_command_buffer - 1)
+      {
+        midi_command_reset();
+        return;
+      }
+      midi_command_buffer[midi_command_length++] = (char)b;
+    }
+  }
+}
+#endif
+
+void midi_comm_task(midi_comm_callback callback, callback_int_int midi_note_on,
+                    callback_int midi_note_off, callback_void midi_start,
+                    callback_void midi_continue, callback_void midi_stop,
+                    callback_void midi_timing,
+                    callback_uint8_uint8_uint8 midi_control_change)
+{
+#ifdef INCLUDE_ZEPTOCORE
+  if (!tud_mounted())
+  {
+    midi_command_reset();
+    return;
+  }
+#endif
+  // A stream read can merge a clock byte with part of the following note.
+  // Consume one complete USB MIDI event per foreground iteration instead.
+  uint8_t packet[4];
+  if (!tud_midi_n_packet_read(0, packet) || (packet[0] >> 4) != 0)
+  {
+    return;
+  }
+  static const uint8_t packet_lengths[16] = {
+      0, 0, 2, 3, 3, 1, 2, 3, 3, 3, 3, 3, 2, 2, 3, 1};
+  uint8_t cin = packet[0] & 0x0f;
+  uint8_t bytes_read = packet_lengths[cin];
+  uint8_t *midi_buffer = packet + 1;
+  if (cin >= 4 && cin <= 7)
+  {
+#ifdef INCLUDE_ZEPTOCORE
+    midi_command_packet(cin, midi_buffer, bytes_read, callback);
+#endif
+    return;
+  }
+#ifdef INCLUDE_ZEPTOCORE
+  // Channel/system-common traffic cancels a partial frame; realtime does not.
+  if (cin != 15)
+    midi_command_reset();
+#endif
+  if (!bytes_read)
+  {
+    return;
+  }
+  // Channel-voice CINs must agree with the status and contain MIDI data bytes.
+  if (cin >= 8 && cin <= 14 &&
+      ((midi_buffer[0] >> 4) != cin || midi_buffer[1] >= 0x80 ||
+       (bytes_read == 3 && midi_buffer[2] >= 0x80)))
+  {
+    return;
+  }
+  if (cin == 15 && midi_buffer[0] == 0xf8)
+  {
+    // timing received
+    usb_midi_present = true;
+    if (midi_timing != NULL)
+    {
+      midi_timing();
+    }
+    return;
+  }
+  else if (cin == 15 && midi_buffer[0] == 0xfa)
+  {
+    // start received
+    usb_midi_present = true;
+    if (midi_start != NULL)
+    {
+      midi_start();
+    }
+    return;
+  }
+  else if (cin == 15 && midi_buffer[0] == 0xfb)
+  {
+    // continue received
+    usb_midi_present = true;
+    if (midi_continue != NULL)
+    {
+      midi_continue();
+    }
+    return;
+  }
+  else if (cin == 15 && midi_buffer[0] == 0xfc)
+  {
+    // stop received
+    usb_midi_present = true;
+    if (midi_stop != NULL)
+    {
+      midi_stop();
+    }
+    return;
+  }
+#ifdef INCLUDE_ZEPTOCORE
+  if (cin < 8 || cin > 14 || !midi_receive_matches(midi_buffer[0]))
+    return;
+#endif
+  if (cin == 11 && midi_receive_matches(midi_buffer[0]))
+  {
+    uint8_t channel = midi_buffer[0] & 0xf;
+#ifndef INCLUDE_ZEPTOCORE
+    if (channel == 0 && midi_buffer[1] == 0)
+    {
+      send_text_as_sysex("command=reset");
+      sleep_ms(10);
+      reset_usb_boot(0, 0);
+      return;
+    }
+    else if (channel == 0 && midi_buffer[1] == 1)
+    {
+      send_text_as_sysex("version=v8.1.0");
+      return;
+    }
+#endif
+    // CONTROL CHANGE
+    if (midi_control_change != NULL)
+    {
+      midi_control_change(channel, midi_buffer[1], midi_buffer[2]);
+    }
+    return;
+  }
+  else if (cin == 8 && midi_receive_matches(midi_buffer[0]))
+  {
+    // note off received
+    usb_midi_present = true;
+    if (midi_note_off != NULL)
+    {
+      midi_note_off(midi_buffer[1]);
+    }
+    return;
+  }
+  else if (cin == 9 && midi_receive_matches(midi_buffer[0]))
+  {
+    // note on received
+    usb_midi_present = true;
+    if (midi_buffer[2] == 0)
+    {
+      if (midi_note_off != NULL)
+        midi_note_off(midi_buffer[1]);
+    }
+    else if (midi_note_on != NULL)
+    {
+      midi_note_on(midi_buffer[1], midi_buffer[2]);
+    }
+    return;
+  }
+#ifndef INCLUDE_ZEPTOCORE
+  if (bytes_read == 3)
+  {
+    usb_midi_present = true;
+    // Extract the status byte and MIDI channel
+    uint8_t status = midi_buffer[0] & 0xF0;
+    uint8_t channel = midi_buffer[0] & 0x0F;
+
+    // Extract the note number and velocity
+    uint8_t note = midi_buffer[1];
+    uint8_t velocity = midi_buffer[2];
+    if (callback != NULL)
+    {
+      callback(status, channel, note, velocity);
+    }
+  }
+#endif
+}
+
+#ifndef DONT_SEND_SYSEX
+#define printf printf_sysex
+#else
+// printf goes to usb serial (stdio_usb shares the port with midi)
+#endif
+#endif

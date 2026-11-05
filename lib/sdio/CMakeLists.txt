@@ -46,3 +46,8 @@ target_link_libraries(FatFs_SPI INTERFACE
     pico_stdlib
     cmsis_core
 )
+# RP2350 has no RTC block (pico_aon_timer uses the powman timer there),
+# use empty hardware_rtc rather than linking a missing library.
+if (PICO_RP2350 AND NOT TARGET hardware_rtc)
+    add_library(hardware_rtc INTERFACE)
+endif()

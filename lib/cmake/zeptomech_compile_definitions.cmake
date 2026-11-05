@@ -1,0 +1,99 @@
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    # hardware specific
+    USE_AUDIO_I2S=1
+    SDCARD_USE_CD=false
+    SDCARD_CD_GPIO=21 # not used...
+    PICO_XOSC_STARTUP_DELAY_MULTIPLIER=64
+
+    # weact
+    SAMPLES_PER_BUFFER=441
+    # SAMPLES_PER_BUFFER=256
+    SDCARD_CMD_GPIO=11
+    SDCARD_D0_GPIO=12
+    AUDIO_CLK_GPIO=16
+    AUDIO_DIN_GPIO=18
+    I2C_SDA_PIN=20
+    I2C_SCL_PIN=21
+    # LED_1_GPIO=9
+    # LED_2_GPIO=19
+    # LED_3_GPIO=29
+    # LED_4_GPIO=24
+    LED_TOP_GPIO=23
+    CLOCK_INPUT_GPIO=29
+    BTN_ROW_START=0
+    BTN_COL_START=5
+    INCLUDE_BUTTONS=1
+    INCLUDE_KNOBS=1
+    # INCLUDE_PCA9552=1
+    INCLUDE_CLOCKINPUT=1
+    INCLUDE_INPUTHANDLING=1
+    INCLUDE_FILTER=1
+    DJ_FILTER=0
+    INCLUDE_ZEPTOCORE=1
+    INCLUDE_MIDI=1
+    # DONT_SEND_SYSEX=1
+    INCLUDE_CUEDSOUNDS=1
+    # INCLUDE_SSD1306=1
+
+    # ARCADE DEFINITIONS
+    MCP23017_ADDR1=0x20
+    MCP23017_ADDR2=0x21
+    ADS7830_ADDR=0x48
+
+    # MECHA DEFINITIONS
+    INCLUDE_ZEPTOMECH=1
+    FIVEVENABLE=19
+    BLUELED=23
+    REDLED=22
+    LED_COUNT=20
+    NEOPIXPIN=9
+    UART1_TX=24
+    UART1_RX=25
+    # ADC0=26
+    # ADC1=27
+    # ADC2=28
+    # CLOCK_INPUT=29
+
+    # utilize core1 for audio to avoid dropouts
+    CORE1_PROCESS_I2S_CALLBACK=1
+    PICO_CORE1_STACK_SIZE=0x1000
+    # DO_OVERCLOCK=1
+
+    # debug printing
+    # PRINT_AUDIO_USAGE=1
+    # PRINT_AUDIO_OVERLOADS=1
+    # PRINT_AUDIO_CPU_USAGE=1
+    # PRINT_MEMORY_USAGE=1
+    # PRINT_SDCARD_TIMING=1
+    # PRINT_AUDIOBLOCKDROPS=1
+
+    # turn off gpio for leds
+    LEDS_NO_GPIO=1
+
+    # file variations
+    FILE_VARIATIONS=2
+
+    # basics
+    # INCLUDE_KEYBOARD=1
+    INCLUDE_RGBLED=1
+    INCLUDE_SINEBASS=1
+
+    USBD_PID=0x1836
+
+    # DETROITUNDERGROUND=1
+)
+
+# midi and usb serial share the usb port (see tusb_config.h, and
+# usb_descriptors_zeptomech.c which CMakeLists.txt builds for zeptomech)
+target_link_libraries(${PROJECT_NAME}
+    tinyusb_device
+    tinyusb_board
+    hardware_uart
+    pico_unique_id
+)
+pico_enable_stdio_usb(${PROJECT_NAME} 1)
+pico_enable_stdio_uart(${PROJECT_NAME} 0)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../..)
+
+# hardware TRS midi out
+pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/../uart_tx.pio)

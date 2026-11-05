@@ -728,6 +728,18 @@ bool button_handler(ButtonMatrix *bm) {
         } else {
           DebounceDigits_setText(debouncer_digits, "RAMP OOFF", led_text_time);
         }
+#ifdef INCLUDE_ZEPTOMECH
+      } else if (key_pressed[0] == 12 && key_pressed[1] == 16 &&
+                 key_pressed[2] == 15 && key_pressed[3] == 19) {
+        // toggle TRS midi output of notes and ccs
+        send_trs_cc_note = !send_trs_cc_note;
+        if (send_trs_cc_note) {
+          DebounceDigits_setText(debouncer_digits, "MIDI TRS ON", led_text_time);
+        } else {
+          DebounceDigits_setText(debouncer_digits, "MIDI TRS OFF",
+                                 led_text_time);
+        }
+#endif
       }
     } else if (key_pressed_num == 8) {
       if (key_pressed[0] == 16 && key_pressed[1] == 12 && key_pressed[2] == 8 &&

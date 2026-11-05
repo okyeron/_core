@@ -139,10 +139,19 @@ endif()
 target_compile_definitions(${PROJECT_NAME} PRIVATE ZEPTOCORE_VISUALIZER=$<BOOL:${ZEPTOCORE_VISUALIZER}>)
 # USB-serial targets need the SDK's CDC configuration, even when the project
 # directory (which contains the MIDI configuration) is on the include path.
+# Zeptomech is the exception: its USB serial shares the port with MIDI.
 get_target_property(CORE_STDIO_USB ${PROJECT_NAME} PICO_TARGET_STDIO_USB)
-if(CORE_STDIO_USB)
+get_target_property(CORE_USB_DEFINITIONS ${PROJECT_NAME} COMPILE_DEFINITIONS)
+if(CORE_STDIO_USB AND NOT "INCLUDE_ZEPTOMECH=1" IN_LIST CORE_USB_DEFINITIONS)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         CFG_TUSB_CONFIG_FILE="${PICO_SDK_PATH}/src/rp2_common/pico_stdio_usb/include/tusb_config.h")
+endif()
+# Zeptomech builds its serial+midi descriptors in place of usb_descriptors.c.
+if("INCLUDE_ZEPTOMECH=1" IN_LIST CORE_USB_DEFINITIONS)
+    get_target_property(CORE_SOURCES ${PROJECT_NAME} SOURCES)
+    list(REMOVE_ITEM CORE_SOURCES ${CMAKE_CURRENT_LIST_DIR}/lib/usb_descriptors.c)
+    list(APPEND CORE_SOURCES ${CMAKE_CURRENT_LIST_DIR}/lib/usb_descriptors_zeptomech.c)
+    set_property(TARGET ${PROJECT_NAME} PROPERTY SOURCES ${CORE_SOURCES})
 endif()
 target_compile_definitions(${PROJECT_NAME} PRIVATE SEEK_MAP_MODULE=1 PICO_MALLOC_PANIC=0
     AUDIO_PREPARE_NEXT=$<BOOL:${AUDIO_PREPARE_NEXT}>
