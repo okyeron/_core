@@ -61,13 +61,7 @@ volatile bool sync_using_sdcard = false;
 uint16_t total_number_samples = 0;
 
 // one wire midi
-#ifdef INCLUDE_ZEPTOMECH
-volatile bool use_onewiremidi = true;
-// true while the clock jack receives pulses; midi clock is ignored meanwhile
-volatile bool clock_jack_active = false;
-#else
 volatile bool use_onewiremidi = false;
-#endif
 
 bool do_switch_between_clock_and_midi = false;
 bool playback_was_stopped_clock = false;
@@ -178,11 +172,7 @@ LEDText *ledtext;
 #endif
 
 #ifdef INCLUDE_ZEPTOMECH
-// hardware TRS midi
-#define UART_ID uart1
-#define UART_BAUD 31250
-PIO pio_rx = pio2;
-uint sm_rx = 1;
+#include "zeptomech_globals.h"
 #endif
 
 #ifdef INCLUDE_MIDI

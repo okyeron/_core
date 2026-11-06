@@ -1,5 +1,6 @@
 // Zeptomech version of midi_comm.h (included instead of it): adds hardware
 // TRS midi out and lets printf go to usb serial instead of sysex.
+// Kept in step with upstream by scripts/sync_zeptomech_copies.sh.
 #ifndef LIB_MIDI_COMM_H
 #define LIB_MIDI_COMM_H 1
 #include <stdarg.h> // Include this header for va_start, va_end, etc.

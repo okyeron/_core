@@ -105,6 +105,13 @@ zeptomech: pico-sdk pico-extras ensure_arm_toolchain lib/fuzz.h lib/transfer_sat
 upload-zeptomech: zeptomech
 	$(MAKE) upload-built UPLOAD_UF2=zeptomech.uf2 PICOTOOL_LOAD_FLAGS="--family rp2350-arm-s -f -x -v"
 
+# After rebasing onto a new upstream, carries upstream changes into the
+# Zeptomech copies of zeptocore.h, midi_comm.h and usb_descriptors.c.
+# UPSTREAM defaults to upstream/main (see docs/zeptomech-fork.md).
+.PHONY: sync-zeptomech-copies
+sync-zeptomech-copies:
+	scripts/sync_zeptomech_copies.sh $(UPSTREAM)
+
 # Sequential submakes keep upload after the successful build, even with make -j.
 .PHONY: zeptocore-visualizer ezeptocore-visualizer ectocore-visualizer
 zeptocore-visualizer:

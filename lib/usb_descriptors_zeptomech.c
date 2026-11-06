@@ -26,6 +26,7 @@
 // Zeptomech version of usb_descriptors.c (CMakeLists.txt builds it instead):
 // usb serial (stdio) and midi on one port, with a serial number from the chip
 // id.
+// Kept in step with upstream by scripts/sync_zeptomech_copies.sh.
 
 #if defined(INCLUDE_MIDI) && defined(INCLUDE_ZEPTOMECH)
 

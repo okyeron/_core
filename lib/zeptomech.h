@@ -1,4 +1,6 @@
 // Copyright 2023-2025 Zack Scholl, GPLv3.0
+// Zeptomech version of zeptocore.h (main.c includes it instead).
+// Kept in step with upstream by scripts/sync_zeptomech_copies.sh.
 #include "clockhandling.h"
 //
 #include "break_knob.h"
