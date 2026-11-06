@@ -751,7 +751,13 @@ bool __not_in_flash_func(repeating_timer_callback)(struct repeating_timer *t) {
 #include "lib/zeptoboard.h"
 #endif
 
+#ifdef SIMULATOR
+// The simulator (../zeptomech-sim) runs the firmware on a host thread and
+// provides its own process entry point.
+int firmware_main(void) {
+#else
 int main() {
+#endif
 #ifdef INCLUDE_ZEPTOMECH
   // zeptomech (RP2350) keeps its default 150MHz system and 48MHz usb clocks
   stdio_init_all();
@@ -1004,3 +1010,9 @@ int main() {
   // blocking
   input_handling();
 }
+
+#ifdef SIMULATOR
+// sim_probe.h lives in the simulator (../zeptomech-sim/firmware), which
+// puts it on the include path
+#include "sim_probe.h"
+#endif

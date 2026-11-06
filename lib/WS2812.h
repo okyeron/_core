@@ -38,7 +38,12 @@ typedef enum {
   FF6B8E = 9,
 } Color;
 
+#ifdef INCLUDE_ZEPTOMECH
+// zeptomech has an SK6812 under each of its 20 keys
+#define NUM_LEDS LED_COUNT
+#else
 #define NUM_LEDS 18
+#endif
 
 const uint8_t ws2812_brightness_values[16] = {
     0, 1, 2, 3, 4, 6, 10, 15, 21, 30, 39, 51, 64, 80, 97, 117,

@@ -112,6 +112,25 @@ upload-zeptomech: zeptomech
 sync-zeptomech-copies:
 	scripts/sync_zeptomech_copies.sh $(UPSTREAM)
 
+# Desktop simulator of the Zeptomech, kept next to this repository in
+# ../zeptomech-sim (see ../zeptomech-sim/README.md). It builds the same firmware sources for the
+# host; needs CMake and a C/C++ compiler, and fetches its GUI/audio/MIDI/Lua
+# dependencies on first configure.
+SIM_DIR ?= $(abspath $(CURDIR)/../zeptomech-sim)
+SIM_BUILD_DIR ?= $(SIM_DIR)/build
+.PHONY: sim run-sim install-sim
+sim: lib/fuzz.h lib/transfer_saturate2.h lib/sinewaves2.h lib/crossfade4_441.h lib/resonantfilter_data.h lib/cuedsounds_zeptocore.h
+	cmake -S $(SIM_DIR) -B $(SIM_BUILD_DIR) -DCMAKE_BUILD_TYPE=Release -DCORE_ROOT=$(CURDIR)
+	cmake --build $(SIM_BUILD_DIR) -j$(NPROCS)
+
+run-sim: sim
+	$(SIM_BUILD_DIR)/zeptomech_sim $(SIM_ARGS)
+
+# copies ZeptoMech Sim.app to /Applications (macOS)
+install-sim: sim
+	rm -rf "/Applications/ZeptoMech Sim.app"
+	cp -R "$(SIM_BUILD_DIR)/ZeptoMech Sim.app" /Applications/
+
 # Sequential submakes keep upload after the successful build, even with make -j.
 .PHONY: zeptocore-visualizer ezeptocore-visualizer ectocore-visualizer
 zeptocore-visualizer:

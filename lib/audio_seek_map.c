@@ -542,7 +542,7 @@ bool seek_maps_load_existing(const char *path) {
     seek_maps_stats.loads=seek_maps_stats.loads+1;
     return true;
 }
-#ifndef SEEK_MAP_HOST_TEST
+#if !defined(SEEK_MAP_HOST_TEST) && !defined(SIMULATOR)
 __attribute__((section(".time_critical.seek_layout")))
 #endif
 void seek_maps_layout(uint16_t id,volatile uint32_t out[76]) {
