@@ -54,6 +54,24 @@ void clockPulseUpdate(ClockInput *clockinput)
 #endif
 }
 
+// sleep that keeps the usb stack running once it has started, so its event
+// queue does not overflow while the host enumerates
+static void zeptomech_wait_ms(uint32_t ms)
+{
+#ifdef INCLUDE_MIDI
+  if (tud_inited())
+  {
+    uint32_t t0 = time_us_32();
+    while (time_us_32() - t0 < ms * 1000)
+    {
+      tud_task();
+    }
+    return;
+  }
+#endif
+  sleep_ms(ms);
+}
+
 void printStringWithDelay(char *str)
 {
   int len = strlen(str);
@@ -84,11 +102,11 @@ void printStringWithDelay(char *str)
         LEDS_render(leds);
         if (currentChar == '.')
         {
-          sleep_ms(50);
+          zeptomech_wait_ms(50);
         }
         else
         {
-          sleep_ms(200);
+          zeptomech_wait_ms(200);
         }
         break;
       }
@@ -149,17 +167,11 @@ void make_random_sequence(uint8_t adcValue)
 void __not_in_flash_func(input_handling)()
 {
 #ifdef INCLUDE_MIDI
-  // manually init USB instead of tusb_init()
-  sleep_ms(250);
+  // manually init USB instead of tusb_init(); the version text below keeps
+  // the usb stack running while the host enumerates
   tud_init(0);
-  // just sit and pump the usb stack for 100-200ms
-  uint32_t t0 = time_us_32();
-  while (time_us_32() - t0 < 200000)
-  {
-    tud_task();
-  }
-  sleep_ms(250);
 #endif
+  printStringWithDelay("zv8.1.0");
 
   LEDS_clear(leds);
   LEDS_render(leds);
@@ -219,9 +231,6 @@ void __not_in_flash_func(input_handling)()
   uint8_t sample_selection_index_last = 0;
   uint8_t debounce_sample_selection = 0;
   uint8_t sample_selection_index = 0;
-
-  // debug test (no zeptocore led matrix on zeptomech)
-  // printStringWithDelay("zv8.1.0");
 
   // initialize the resonsant filter
   global_filter_index = 12;

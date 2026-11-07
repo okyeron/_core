@@ -49,6 +49,21 @@ void LEDS_render_forward_zeptomech(LEDS *leds) {
 #endif
 }
 
+// the ws2812 strip, called from main() before sdcard_startup() so the startup
+// text ("M", "NO SDCARD") shows on it
+void zeptomech_leds_setup() {
+#ifdef INCLUDE_RGBLED
+  ws2812 = WS2812_new(NEOPIXPIN, pio0, 2);
+  WS2812_set_brightness(ws2812, global_brightness);
+  sleep_ms(1);
+  WS2812_fill(ws2812, 0, 0, 0, 0);
+  sleep_ms(1);
+  WS2812_show(ws2812);
+  sleep_ms(1);
+  LEDS_clear(leds);
+#endif
+}
+
 // zeptomech hardware, called from main() before the leds and audio start
 void zeptomech_setup() {
   is_zeptomech = true;
@@ -73,7 +88,7 @@ void zeptomech_setup() {
   // hardware TRS midi out (pio uart_tx); see send_midi_trs
   uint offset_tx = pio_add_program(pio_tx, &uart_tx_program);
   uart_tx_program_init(pio_tx, sm_tx, offset_tx, UART1_TX, UART_BAUD);
-  // the ws2812 strip is set up with INCLUDE_RGBLED in main()
+  // the ws2812 strip is set up by zeptomech_leds_setup()
 }
 
 #endif

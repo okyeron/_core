@@ -947,6 +947,9 @@ int main() {
   sel_sample_cur = 0;
 
   // printf("startup!\n");
+#ifdef INCLUDE_ZEPTOMECH
+  zeptomech_leds_setup();
+#endif
 #ifdef SD_BOOT_CACHE
   sd_boot_cache_enable(true);  // see lib/sd_boot_cache.h
 #endif
@@ -965,19 +968,12 @@ int main() {
   resFilter[1] = ResonantFilter_create(0);
 #endif
 #ifdef INCLUDE_RGBLED
-#ifdef INCLUDE_ZEPTOMECH
-  ws2812 = WS2812_new(NEOPIXPIN, pio0, 2);
-  WS2812_set_brightness(ws2812, global_brightness);
-#else
+#ifndef INCLUDE_ZEPTOMECH  // zeptomech_leds_setup() did this before sdcard_startup
   ws2812 = WS2812_new(23, pio0, 2);
-#endif
   sleep_ms(1);
   WS2812_fill(ws2812, 0, 0, 0, 0);
   sleep_ms(1);
   WS2812_show(ws2812);
-#ifdef INCLUDE_ZEPTOMECH
-  sleep_ms(1);
-  LEDS_clear(leds);
 #endif
   // for (uint8_t i = 0; i < 255; i++) {
   //   WS2812_fill(ws2812, i, 0, 0);
