@@ -315,6 +315,14 @@ void __not_in_flash_func(input_handling)()
   while (1)
   {
     audio_media_poll();
+    // a bank change loads the bank's metadata one small step per call, and
+    // zeptomech's main loop is slower than zeptocore's, so run more steps
+    // while one is under way (audio is faded out meanwhile)
+    uint32_t bank_poll_start = time_us_32();
+    while (bank_transition_busy() && time_us_32() - bank_poll_start < 4000)
+    {
+      audio_media_poll();
+    }
     metadata_deferred_presets();
     ZD_CALL(zd_service(ZD_CONTROL));
 #ifdef INCLUDE_MIDI

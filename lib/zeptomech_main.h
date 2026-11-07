@@ -67,6 +67,9 @@ void zeptomech_leds_setup() {
 // zeptomech hardware, called from main() before the leds and audio start
 void zeptomech_setup() {
   is_zeptomech = true;
+  // the ADS7830 pots are the only i2c device on zeptomech; main() sets up the
+  // bus at 50 kHz, where reading all 8 pots took ~6.7 ms of every main loop
+  i2c_set_baudrate(i2c_default, 400 * 1000);
   // midi comes in on the TRS jack
   use_onewiremidi = true;
 
