@@ -2,6 +2,16 @@
 #ifndef ZEPTOMECH_MAIN_H
 #define ZEPTOMECH_MAIN_H 1
 
+#ifdef SD_BOOT_CACHE
+#ifdef SIMULATOR
+// the simulator has its own disk layer
+static inline void sd_boot_cache_enable(bool on) { (void)on; }
+#else
+// lib/sd_boot_cache.h, built into lib/sdio/src/glue.c
+void sd_boot_cache_enable(bool on);
+#endif
+#endif
+
 // zeptomech shows the zeptocore led states on its ws2812 strip
 // (called from LEDS_render)
 void LEDS_render_forward_zeptomech(LEDS *leds) {

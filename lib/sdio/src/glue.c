@@ -26,6 +26,9 @@ specific language governing permissions and limitations under the License.
 #include "sd_card.h"
 //
 #include "diskio.h" /* Declarations of disk functions */
+#ifdef SD_BOOT_CACHE
+#include "../../sd_boot_cache.h"
+#endif
 
 #define TRACE_PRINTF(fmt, args...)
 //#define TRACE_PRINTF printf  // task_printf
@@ -57,6 +60,9 @@ DSTATUS disk_initialize(
 
     sd_card_t *sd_card_p = sd_get_by_num(pdrv);
     if (!sd_card_p) return RES_PARERR;
+#ifdef SD_BOOT_CACHE
+    sd_boot_cache_clear();
+#endif
     DSTATUS ds = disk_status(pdrv);
     if (STA_NODISK & ds) 
         return ds;
@@ -99,7 +105,14 @@ DRESULT disk_read(BYTE pdrv,  /* Physical drive number to identify the drive */
     TRACE_PRINTF(">>> %s\n", __FUNCTION__);
     sd_card_t *sd_card_p = sd_get_by_num(pdrv);
     if (!sd_card_p) return RES_PARERR;
+#ifdef SD_BOOT_CACHE
+    if (count == 1 && sd_boot_cache_read(pdrv, buff, sector)) return RES_OK;
+#endif
     int rc = sd_card_p->read_blocks(sd_card_p, buff, sector, count);
+#ifdef SD_BOOT_CACHE
+    if (count == 1 && rc == SD_BLOCK_DEVICE_ERROR_NONE)
+        sd_boot_cache_store(pdrv, buff, sector);
+#endif
     return sdrc2dresult(rc);
 }
 
@@ -117,6 +130,9 @@ DRESULT disk_write(BYTE pdrv, /* Physical drive number to identify the drive */
     TRACE_PRINTF(">>> %s\n", __FUNCTION__);
     sd_card_t *sd_card_p = sd_get_by_num(pdrv);
     if (!sd_card_p) return RES_PARERR;
+#ifdef SD_BOOT_CACHE
+    sd_boot_cache_invalidate(pdrv, sector, count);
+#endif
     int rc = sd_card_p->write_blocks(sd_card_p, buff, sector, count);
     return sdrc2dresult(rc);
 }

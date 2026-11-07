@@ -947,7 +947,13 @@ int main() {
   sel_sample_cur = 0;
 
   // printf("startup!\n");
+#ifdef SD_BOOT_CACHE
+  sd_boot_cache_enable(true);  // see lib/sd_boot_cache.h
+#endif
   sdcard_startup();
+#ifdef SD_BOOT_CACHE
+  sd_boot_cache_enable(false);
+#endif
   update_repeating_timer_to_bpm(sf->bpm_tempo);
 
   // TODO

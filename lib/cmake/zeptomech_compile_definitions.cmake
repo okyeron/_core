@@ -33,6 +33,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     INCLUDE_MIDI=1
     # DONT_SEND_SYSEX=1
     INCLUDE_CUEDSOUNDS=1
+    SD_BOOT_CACHE=1 # sector cache during sdcard startup, see lib/sd_boot_cache.h
+    SD_BOOT_CACHE_SECTORS=128 # 64 KB, freed after startup
     # INCLUDE_SSD1306=1
 
     # ARCADE DEFINITIONS
