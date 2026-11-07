@@ -54,6 +54,40 @@ void clockPulseUpdate(ClockInput *clockinput)
 #endif
 }
 
+// KnobChange only reports a pot after it moves 6 steps (of 0-255), so a slow
+// turn or the end stops can stop short: with 112 samples on the sample knob
+// that missed samples and sometimes the first one. A smaller move of at least
+// ZEPTOMECH_KNOB_SETTLE_STEPS is reported once it has held for
+// ZEPTOMECH_KNOB_SETTLE_MS; one-step jitter is ignored.
+#define ZEPTOMECH_KNOB_SETTLE_STEPS 2
+#define ZEPTOMECH_KNOB_SETTLE_MS 80
+static int16_t zeptomech_knob_settle(KnobChange *filter, uint32_t *since)
+{
+  if (filter->count == 0 || filter->last_output == INT32_MIN)
+  {
+    return -1;
+  }
+  int smoothed = filter->sum / filter->count;
+  if (abs(smoothed - filter->last_output) < ZEPTOMECH_KNOB_SETTLE_STEPS)
+  {
+    *since = 0;
+    return -1;
+  }
+  uint32_t now = to_ms_since_boot(get_absolute_time());
+  if (*since == 0)
+  {
+    *since = now ? now : 1;
+    return -1;
+  }
+  if (now - *since < ZEPTOMECH_KNOB_SETTLE_MS)
+  {
+    return -1;
+  }
+  *since = 0;
+  filter->last_output = smoothed;
+  return smoothed;
+}
+
 // sleep that keeps the usb stack running once it has started, so its event
 // queue does not overflow while the host enumerates
 static void zeptomech_wait_ms(uint32_t ms)
@@ -262,6 +296,7 @@ void __not_in_flash_func(input_handling)()
   regenerate_random_sequence_arr();
 
   KnobChange *knob_change_arcade[8];
+  uint32_t knob_settle_since[8] = {0};
   ADS7830 *arcade_ads7830 = NULL;
   if (is_arcade_box || is_zeptomech)
   {
@@ -894,6 +929,15 @@ void __not_in_flash_func(input_handling)()
       {
         int16_t adcValue = KnobChange_update(
             knob_change_arcade[i], (int16_t)ADS7830_read(arcade_ads7830, i));
+        if (adcValue < 0)
+        {
+          adcValue = zeptomech_knob_settle(knob_change_arcade[i],
+                                           &knob_settle_since[i]);
+        }
+        else
+        {
+          knob_settle_since[i] = 0;
+        }
         if (adcValue > -1)
         {
 // printf("knob %d: %d\n", i, adcValue);
