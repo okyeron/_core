@@ -584,6 +584,7 @@ void __not_in_flash_func(input_handling)()
       if (mode_buttons16 == MODE_MASH && single_key > -1)
       {
         sf->fx_param[single_key - 4][0] = adc * 255 / 4096;
+        zeptomech_fx_param_touched(single_key - 4);
         clear_debouncers();
         DebounceUint8_set(debouncer_uint8[DEBOUNCE_UINT8_LED_BAR],
                           sf->fx_param[single_key - 4][0], 100);
@@ -727,6 +728,7 @@ void __not_in_flash_func(input_handling)()
       if (mode_buttons16 == MODE_MASH && single_key > -1)
       {
         sf->fx_param[single_key - 4][1] = adc * 255 / 4096;
+        zeptomech_fx_param_touched(single_key - 4);
         if (key_on_buttons[FX_EXPAND + 4])
         {
           update_reverb();

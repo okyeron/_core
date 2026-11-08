@@ -31,6 +31,7 @@ Each upstream file gets short hooks; the code lives in Zeptomech files:
 | `lib/globals.h` | one include | `lib/zeptomech_globals.h` |
 | `lib/midi_out.h` | redirects its usb midi writes, like `midi_comm.h`'s `printf` | `lib/midi_out_zeptomech.h` (TRS copy of notes and ccs) |
 | `lib/includes.h` | Zeptomech includes, `midi_comm` swap | |
+| `lib/sdcard_startup.h`, `lib/break_knob.h` | calls at the end of `update_fx()` and at both ends of `break_fx_toggle()` | `lib/zeptomech_fx.h` (effects keep their knob settings) |
 | `lib/leds2.h`, `lib/button_handler.h`, `lib/midicallback.h` | small `#ifdef` blocks | |
 | `CMakeLists.txt`, `tusb_config.h`, `lib/sdio/CMakeLists.txt`, `Makefile` | build switches | `lib/cmake/zeptomech_compile_definitions.cmake`, `lib/boards/` |
 

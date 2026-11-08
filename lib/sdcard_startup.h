@@ -514,6 +514,9 @@ void update_fx(uint8_t fx_num) {
     default:
       break;
   }
+#ifdef INCLUDE_ZEPTOMECH
+  zeptomech_update_fx(fx_num);
+#endif
 }
 
 void fx_sequencer_emit(uint8_t key) {

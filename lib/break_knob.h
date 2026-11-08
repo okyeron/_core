@@ -120,6 +120,9 @@ void do_do_retrigger(uint8_t effect, bool on, bool pitch_changes) {
 }
 
 void break_fx_toggle(uint8_t effect, bool on) {
+#ifdef INCLUDE_ZEPTOMECH
+  zeptomech_break_fx_begin(effect, on);
+#endif
   // if (effect != 4) {
   //   return;
   // }
@@ -324,6 +327,9 @@ void break_fx_toggle(uint8_t effect, bool on) {
     default:
       break;
   }
+#ifdef INCLUDE_ZEPTOMECH
+  zeptomech_break_fx_end(effect, on);
+#endif
 }
 
 #ifdef INCLUDE_ECTOCORE

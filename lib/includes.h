@@ -178,6 +178,9 @@ bool usb_midi_present = false;
 #include "transfer.h"
 //
 #include "seek_audio_fixture.h"
+#ifdef INCLUDE_ZEPTOMECH
+#include "zeptomech_fx.h"
+#endif
 #include "sdcard_startup.h"
 //
 #include "keyboard.h"
