@@ -17,7 +17,124 @@ void send_midi_trs(const uint8_t *midi_message, uint len)
 {
   uart_tx_program_puts_len(pio_tx, sm_tx, (const char *)midi_message, len);
 }
+
+// The rest of a usb midi message that did not fit in TinyUSB's fifo.
+// TinyUSB keeps a part-written message open (a SysEx without its F7) and
+// packs everything written after it into that message, which then reaches
+// the host as invalid SysEx. So the rest goes out before anything else.
+#define MIDI_USB_PENDING 128
+static uint8_t midi_usb_pending[MIDI_USB_PENDING];
+static uint16_t midi_usb_pending_len = 0;
+static uint16_t midi_usb_pending_pos = 0;
+
+// true when no message is left part-written
+static bool midi_usb_flush()
+{
+  if (midi_usb_pending_pos < midi_usb_pending_len)
+  {
+    midi_usb_pending_pos += tud_midi_n_stream_write(
+        0, 0, midi_usb_pending + midi_usb_pending_pos,
+        midi_usb_pending_len - midi_usb_pending_pos);
+  }
+  if (midi_usb_pending_pos < midi_usb_pending_len)
+  {
+    return false;
+  }
+  midi_usb_pending_pos = midi_usb_pending_len = 0;
+  return true;
+}
+
+// writes a whole message to usb midi; returns 0 (nothing sent) when usb is
+// not ready or an earlier message is still going out
+uint32_t midi_usb_write(const uint8_t *data, uint32_t len)
+{
+  if (!tud_ready() || !midi_usb_flush())
+  {
+    return 0;
+  }
+  uint32_t n = tud_midi_n_stream_write(0, 0, data, len);
+  if (n < len)
+  {
+    uint32_t rest = len - n;
+    if (rest > MIDI_USB_PENDING)
+    {
+      rest = MIDI_USB_PENDING;
+    }
+    memcpy(midi_usb_pending, data + n, rest);
+    if (data[0] == 0xF0)
+    {
+      // a cut SysEx still has to end
+      midi_usb_pending[rest - 1] = 0xF7;
+    }
+    midi_usb_pending_len = rest;
+    midi_usb_pending_pos = 0;
+  }
+  return len;
+}
+
+// MIDI written from the timer interrupt: clock, start and stop, and notes
+// from sequencer playback. TinyUSB builds each usb midi packet from the
+// stream a byte at a time, so writing there can land inside a message the
+// main loop is writing (a knob cc) and break both into invalid packets; a
+// note sent to the TRS jack there would split the cc the same way. These
+// messages wait here for midi_irq_service(), which the main loop calls
+// between messages.
+#define MIDI_IRQ_QUEUE 32
+typedef struct
+{
+  uint8_t len;
+  bool trs;
+  uint8_t data[3];
+} midi_irq_message;
+static midi_irq_message midi_irq_queue[MIDI_IRQ_QUEUE];
+static volatile uint8_t midi_irq_head = 0;
+static volatile uint8_t midi_irq_tail = 0;
+
+static inline bool midi_in_irq()
+{
+  return __get_current_exception() != 0;
+}
+
+static void midi_irq_enqueue(const uint8_t *data, uint32_t len, bool trs)
+{
+  uint8_t next = (midi_irq_head + 1) % MIDI_IRQ_QUEUE;
+  if (next == midi_irq_tail || len > 3)
+  {
+    return; // full
+  }
+  midi_irq_message *m = &midi_irq_queue[midi_irq_head];
+  m->len = len;
+  m->trs = trs;
+  memcpy(m->data, data, len);
+  __atomic_signal_fence(__ATOMIC_SEQ_CST);
+  midi_irq_head = next;
+}
+
+void midi_irq_service()
+{
+  midi_usb_flush();
+  while (midi_irq_tail != midi_irq_head)
+  {
+    __atomic_signal_fence(__ATOMIC_SEQ_CST);
+    midi_irq_message *m = &midi_irq_queue[midi_irq_tail];
+    if (tud_ready() && midi_usb_write(m->data, m->len) == 0)
+    {
+      return; // usb fifo full, try again next pass
+    }
+    if (m->trs)
+    {
+      send_midi_trs(m->data, m->len);
+    }
+    midi_irq_tail = (midi_irq_tail + 1) % MIDI_IRQ_QUEUE;
+  }
+}
 #endif
+
+// sysex data bytes must be below 0x80, anything else would end the message
+static inline uint8_t sysex_byte(char c)
+{
+  return (uint8_t)c < 0x80 ? (uint8_t)c : '?';
+}
 
 uint32_t send_buffer_as_sysex(char *buffer, uint32_t bufsize)
 {
@@ -26,11 +143,11 @@ uint32_t send_buffer_as_sysex(char *buffer, uint32_t bufsize)
   sysex_data[0] = 0xF0; // Start of SysEx
   for (uint32_t i = 0; i < bufsize; i++)
   {
-    sysex_data[i + 1] = buffer[i]; // Copy buffer into SysEx data
+    sysex_data[i + 1] = sysex_byte(buffer[i]); // Copy buffer into SysEx data
   }
   sysex_data[bufsize + 1] = 0xF7; // End of SysEx
 
-  return tud_midi_n_stream_write(0, 0, sysex_data, sizeof(sysex_data));
+  return midi_usb_write(sysex_data, sizeof(sysex_data));
 }
 
 uint32_t send_text_as_sysex(const char *text)
@@ -41,18 +158,21 @@ uint32_t send_text_as_sysex(const char *text)
   sysex_data[0] = 0xF0; // Start of SysEx
   for (uint32_t i = 0; i < text_length; i++)
   {
-    sysex_data[i + 1] = text[i]; // Copy text into SysEx data
+    sysex_data[i + 1] = sysex_byte(text[i]); // Copy text into SysEx data
   }
   sysex_data[text_length + 1] = 0xF7; // End of SysEx
 
   // Call the stream write function with the SysEx message
-  return tud_midi_n_stream_write(0, 0, sysex_data, sizeof(sysex_data));
+  return midi_usb_write(sysex_data, sizeof(sysex_data));
 }
 
 void send_midi_clock()
 {
 #if ZV_ENABLED
   zv_realtime_enqueue(0xf8);
+#elif defined(INCLUDE_ZEPTOMECH)
+  // usb only: the trs copy below goes out now
+  midi_irq_enqueue((uint8_t[1]){0xf8}, 1, false);
 #else
   // Ensure TinyUSB stack is initialized and ready
   if (tud_ready())
@@ -63,7 +183,7 @@ void send_midi_clock()
     midi_message[0] = 0xF8; // Timing Clock command
 
     // Send the MIDI message
-    tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message));
+    midi_usb_write(midi_message, sizeof(midi_message));
   }
 #endif
 #ifdef INCLUDE_ZEPTOMECH
@@ -75,6 +195,9 @@ void send_midi_start()
 {
 #if ZV_ENABLED
   zv_realtime_enqueue(0xfa);
+#elif defined(INCLUDE_ZEPTOMECH)
+  // usb only: the trs copy below goes out now
+  midi_irq_enqueue((uint8_t[1]){0xfa}, 1, false);
 #else
   // Ensure TinyUSB stack is initialized and ready
   if (tud_ready())
@@ -85,7 +208,7 @@ void send_midi_start()
     midi_message[0] = 0xFA; // Start command
 
     // Send the MIDI message
-    tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message));
+    midi_usb_write(midi_message, sizeof(midi_message));
   }
 #endif
 #ifdef INCLUDE_ZEPTOMECH
@@ -97,6 +220,9 @@ void send_midi_stop()
 {
 #if ZV_ENABLED
   zv_realtime_enqueue(0xfc);
+#elif defined(INCLUDE_ZEPTOMECH)
+  // usb only: the trs copy below goes out now
+  midi_irq_enqueue((uint8_t[1]){0xfc}, 1, false);
 #else
   // Ensure TinyUSB stack is initialized and ready
   if (tud_ready())
@@ -107,7 +233,7 @@ void send_midi_stop()
     midi_message[0] = 0xFC; // Stop command
 
     // Send the MIDI message
-    tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message));
+    midi_usb_write(midi_message, sizeof(midi_message));
   }
 #endif
 #ifdef INCLUDE_ZEPTOMECH
@@ -131,7 +257,7 @@ void send_midi_note_on(uint8_t note, uint8_t velocity)
     midi_message[2] = velocity;       // Note velocity
 
     // Send the MIDI message
-    tud_midi_n_stream_write(0, 0, midi_message, sizeof(midi_message));
+    midi_usb_write(midi_message, sizeof(midi_message));
   }
 #ifdef INCLUDE_ZEPTOMECH
   send_midi_trs((uint8_t[3]){0x90, note, velocity}, 3);

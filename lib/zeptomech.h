@@ -358,6 +358,7 @@ void __not_in_flash_func(input_handling)()
     ZD_CALL(zd_service(ZD_CONTROL));
 #ifdef INCLUDE_MIDI
     tud_task();
+    midi_irq_service();
     ZV_CALL(zv_realtime_service(tud_mounted(), tud_midi_packet_write));
     // Complete any partially queued telemetry before processing commands that
     // can emit another SysEx message. Clock packets may interleave legally.

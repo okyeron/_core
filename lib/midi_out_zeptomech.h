@@ -9,7 +9,15 @@ volatile bool send_trs_cc_note = false;
 static inline uint32_t midi_out_write_zeptomech(uint8_t itf, uint8_t cable_num,
                                                uint8_t const *buffer,
                                                uint32_t bufsize) {
-  uint32_t written = tud_midi_n_stream_write(itf, cable_num, buffer, bufsize);
+  if (midi_in_irq()) {
+    // sequencer notes from the timer interrupt, see midi_irq_enqueue()
+    midi_irq_enqueue(buffer, bufsize, send_trs_cc_note);
+    return bufsize;
+  }
+  (void)itf;
+  (void)cable_num;
+  // whole messages only, see midi_usb_write()
+  uint32_t written = midi_usb_write(buffer, bufsize);
   if (send_trs_cc_note) {
     send_midi_trs(buffer, bufsize);
   }
