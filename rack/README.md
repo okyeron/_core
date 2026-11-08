@@ -101,7 +101,11 @@ The sample folder is external: move it with your patch, then use **Choose sample
 
 Build from this repository or the matching source archive. Required tools: Python 3.10 or later with NumPy, Clang with JSON AST support, a C/C++17 compiler, GNU Make, jq, and zstd. The build generates its DSP tables from the shared firmware scripts; no prior hardware build is needed. macOS also needs the Xcode command-line tools; Linux/Windows builds use the corresponding Rack SDK and native toolchain. Generation must run for the target OS, since the generated translation unit contains that platform's C library declarations.
 
-The generated C engine is compiled with the same Clang used for preprocessing (`CLANG=clang` by default). `CC` and `CXX` select the other C and C++ compilers and may use GCC on Linux/Windows.
+Mac Intel packages target macOS 10.15 (Catalina), the first release supporting the storage reader's C++17 filesystem APIs. Apple Silicon packages target macOS 11.0 (Big Sur). These minimums follow the SDK's target architecture for both native and Linux-hosted builds.
+
+The generated C engine is compiled with the same Clang used for preprocessing. On macOS targets, `CLANG` defaults to `CC`, including the osxcross wrapper exported by VCV's Linux build toolchain. That wrapper selects both the target CPU and macOS SDK headers even when `CROSS_COMPILE` is unset. On Linux/Windows targets, `CLANG` defaults to `clang`, while `CC` and `CXX` may use GCC. An explicit `CLANG` override takes precedence on every platform.
+
+For Windows, both engine generation and compilation use the SDK's `MACHINE` target (derived from `CC -dumpmachine`) and the sysroot reported by `CC -print-sysroot`. This also supports VCV's Linux-hosted MinGW toolchain, which does not set `CROSS_COMPILE`. `ENGINE_TARGET` and `ENGINE_SYSROOT` can override these values; an empty sysroot keeps Clang's normal header discovery for native MSYS2 builds. Run `make clean` before rebuilding when changing toolchains, since the generated engine contains target-specific libc declarations.
 
 From the repository root on Apple Silicon:
 

@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
@@ -63,6 +64,7 @@ if goal == 'dist':
 ''')
         self.env = dict(os.environ)
         for key in ('RACK_DIR', 'MAKEFLAGS', 'MFLAGS', 'MAKEOVERRIDES', 'CC', 'CXX',
+                    'CLANG', 'CROSS_COMPILE', 'ENGINE_TARGET', 'ENGINE_SYSROOT',
                     'PYTHON', 'FAIL_GOAL'):
             self.env.pop(key, None)
 
@@ -159,6 +161,141 @@ if goal == 'dist':
         self.make('dep', 'RACK_DIR=sdk', env={'RACK_DIR': 'missing'})
         self.assertEqual(self.calls()[-1][0], 'dep')
         self.assertEqual(Path(self.calls()[-1][1]).resolve(), self.sdk)
+
+    def test_deployment_minimum_follows_sdk_target(self):
+        if os.name != 'nt':
+            # Reproduce VCV's Linux build host even when testing on a Mac.
+            bin_dir = self.root / 'bin'
+            bin_dir.mkdir()
+            uname = bin_dir / 'uname'
+            uname.write_text('#!/bin/sh\necho Linux\n')
+            uname.chmod(0o755)
+            self.env['PATH'] = str(bin_dir) + os.pathsep + self.env['PATH']
+        # Model the SDK's recursive flag expansion and its older Mac default.
+        # ARCH_* describes the target, independent of the machine running Make.
+        with (self.sdk / 'plugin.mk').open('a') as sdk:
+            sdk.write('''
+ifdef ARCH_MAC
+FLAGS += -mmacosx-version-min=10.9
+endif
+FLAGS += $(EXTRA_FLAGS)
+CFLAGS += $(FLAGS)
+CXXFLAGS += $(FLAGS) $(EXTRA_CXXFLAGS)
+.PHONY: flags
+flags:
+\t@echo "CFLAGS: $(CFLAGS)"
+\t@echo "CXXFLAGS: $(CXXFLAGS)"
+''')
+        for arch, definitions, minimum in (
+                ('mac-x64', ['ARCH_MAC=1', 'ARCH_X64=1'], '10.15'),
+                ('mac-arm64', ['ARCH_MAC=1', 'ARCH_ARM64=1'], '11.0'),
+                ('lin-x64', ['ARCH_LIN=1', 'ARCH_X64=1'], None),
+                ('win-x64', ['ARCH_WIN=1', 'ARCH_X64=1'], None)):
+            with self.subTest(arch=arch):
+                output = self.make('flags', 'RACK_DIR=../sdk', *definitions,
+                                   cwd=self.root / 'rack')
+                flags = [line.split(': ', 1)[1] for line in output.splitlines()
+                         if line.startswith(('CFLAGS: ', 'CXXFLAGS: '))]
+                self.assertEqual(len(flags), 2, output)
+                for line in flags:
+                    minimums = [flag for flag in line.split()
+                                if flag.startswith('-mmacosx-version-min=')]
+                    if minimum is None:
+                        self.assertEqual(minimums, [], output)
+                    else:
+                        self.assertEqual(minimums[-1],
+                                         f'-mmacosx-version-min={minimum}', output)
+
+    def test_engine_compiler_selection_for_generation_and_compilation(self):
+        # VCV exports an osxcross CC wrapper without setting CROSS_COMPILE.
+        # It supplies both the target and the SDK headers to Clang. Check the
+        # actual recipes, including the independent generated-engine compile.
+        for name in ('lib/crossfade4.py', 'lib/fuzz.py', 'lib/resonantfilter.py',
+                     'lib/core_engine/prepare.py', 'main.c'):
+            self.sentinel(name)
+        with (self.sdk / 'plugin.mk').open('a') as sdk:
+            sdk.write('CFLAGS += -fno-gnu-unique $(EXTRA_FLAGS)\n'
+                      'MACHINE ?= $(if $(ARCH_WIN),x86_64-w64-mingw32)\n')
+        cases = (
+            ('mac-arm64', ['ARCH_MAC=1', 'ARCH_ARM64=1'],
+             {'CC': 'arm64-apple-darwin21.4-clang'},
+             'arm64-apple-darwin21.4-clang'),
+            ('mac-x64', ['ARCH_MAC=1', 'ARCH_X64=1'],
+             {'CC': 'x86_64-apple-darwin21.4-clang'},
+             'x86_64-apple-darwin21.4-clang'),
+            ('mac-native', ['ARCH_MAC=1', 'ARCH_ARM64=1'],
+             {'CC': 'cc'}, 'cc'),
+            ('linux-gcc', ['ARCH_LIN=1', 'ARCH_X64=1'],
+             {'CC': 'gcc'}, 'clang'),
+            ('windows-gcc', ['ARCH_WIN=1', 'ARCH_X64=1'],
+             {'CC': 'gcc'}, 'clang'),
+            ('explicit-clang', ['ARCH_MAC=1', 'ARCH_ARM64=1', 'CLANG=custom-clang'],
+             {'CC': 'arm64-apple-darwin21.4-clang'}, 'custom-clang'),
+            ('environment-clang', ['ARCH_MAC=1', 'ARCH_ARM64=1'],
+             {'CC': 'arm64-apple-darwin21.4-clang', 'CLANG': 'custom-clang'},
+             'custom-clang'),
+            ('explicit-target', ['ARCH_MAC=1', 'ARCH_X64=1',
+                                 'CROSS_COMPILE=x86_64-apple-darwin'],
+             {'CC': 'clang'}, 'clang'),
+        )
+        for name, definitions, environment, compiler in cases:
+            with self.subTest(name=name):
+                output = self.make('-n', '-B', 'build/core-engine.o',
+                                   'RACK_DIR=../sdk', 'ENGINE_SYSROOT=', *definitions,
+                                   cwd=self.root / 'rack', env=environment)
+                generate = next(shlex.split(line) for line in output.splitlines()
+                                if 'prepare.py --out' in line)
+                compile = next(shlex.split(line) for line in output.splitlines()
+                               if ' -c build/generated/engine.c ' in line)
+                self.assertEqual(generate[generate.index('--clang') + 1], compiler)
+                self.assertEqual(compile[0], compiler)
+                self.assertNotIn('-fno-gnu-unique', compile)
+                if name == 'explicit-target':
+                    self.assertEqual(generate[generate.index('--target') + 1],
+                                     'x86_64-apple-darwin')
+                    self.assertIn('--target=x86_64-apple-darwin', compile)
+                elif name == 'windows-gcc':
+                    self.assertEqual(generate[generate.index('--target') + 1],
+                                     'x86_64-w64-mingw32')
+                    self.assertIn('--target=x86_64-w64-mingw32', compile)
+                else:
+                    self.assertNotIn('--target', generate)
+
+    def test_windows_engine_uses_exported_gcc_target_and_sysroot(self):
+        for name in ('lib/crossfade4.py', 'lib/fuzz.py', 'lib/resonantfilter.py',
+                     'lib/core_engine/prepare.py', 'main.c'):
+            self.sentinel(name)
+        # Reproduce VCV's exported CC with no CROSS_COMPILE. The SDK queries
+        # CC for MACHINE; the engine must use that target in both recipes.
+        with (self.sdk / 'plugin.mk').open('a') as sdk:
+            sdk.write('MACHINE := $(shell $(CC) -dumpmachine)\n')
+        (self.root / 'rack/cross-gcc.py').write_text('''
+import sys
+print('x86_64-w64-mingw32' if sys.argv[1] == '-dumpmachine'
+      else '/vcv toolchain/mingw/sysroot')
+''')
+        for overrides, target, sysroot in (
+                ([], 'x86_64-w64-mingw32', '/vcv toolchain/mingw/sysroot'),
+                (['ENGINE_TARGET=x86_64-w64-windows-gnu', 'ENGINE_SYSROOT=/custom'],
+                 'x86_64-w64-windows-gnu', '/custom'),
+                (['ENGINE_SYSROOT='], 'x86_64-w64-mingw32', None)):
+            with self.subTest(overrides=overrides):
+                output = self.make('-n', '-B', 'build/core-engine.o',
+                                   'RACK_DIR=../sdk', 'ARCH_WIN=1', *overrides,
+                                   env={'CC': 'python cross-gcc.py'},
+                                   cwd=self.root / 'rack')
+                generate = next(shlex.split(line) for line in output.splitlines()
+                                if 'prepare.py --out' in line)
+                compile = next(shlex.split(line) for line in output.splitlines()
+                               if ' -c build/generated/engine.c ' in line)
+                self.assertEqual(generate[generate.index('--target') + 1], target)
+                self.assertIn('--target=' + target, compile)
+                if sysroot:
+                    self.assertEqual(generate[generate.index('--sysroot') + 1], sysroot)
+                    self.assertIn('--sysroot=' + sysroot, compile)
+                else:
+                    self.assertNotIn('--sysroot', generate)
+                    self.assertFalse(any(arg.startswith('--sysroot=') for arg in compile))
 
     def test_default_sdk_discovery_and_root_install(self):
         sdk = self.root / 'artifacts/rack-sdk/Rack-SDK'
