@@ -88,6 +88,35 @@ static int16_t zeptomech_knob_settle(KnobChange *filter, uint32_t *since)
   return smoothed;
 }
 
+// The main loop runs much faster than on zeptocore or v6 (no 1 ms sleep per
+// button read, 400 kHz pots), but button combos, LED animations, the led
+// blink and the knob/repeat counters below count loop passes or
+// button_handler calls. Those run at the old pace instead: one pass per
+// 12.3 ms with button_handler 4 times per pass.
+#define ZEPTOMECH_PASS_US 12300
+#define ZEPTOMECH_BUTTON_US (ZEPTOMECH_PASS_US / 4)
+static bool zeptomech_tick(uint32_t *last, uint32_t period_us)
+{
+  uint32_t now = time_us_32();
+  if (now - *last < period_us)
+  {
+    return false;
+  }
+  // keep the average rate, without a burst after a long pass
+  *last = (now - *last < 2 * period_us) ? *last + period_us : now;
+  return true;
+}
+
+static bool zeptomech_button_handler(ButtonMatrix *bm)
+{
+  static uint32_t last = 0;
+  if (!zeptomech_tick(&last, ZEPTOMECH_BUTTON_US))
+  {
+    return false;
+  }
+  return button_handler(bm);
+}
+
 // sleep that keeps the usb stack running once it has started, so its event
 // queue does not overflow while the host enumerates
 static void zeptomech_wait_ms(uint32_t ms)
@@ -314,6 +343,8 @@ void __not_in_flash_func(input_handling)()
   metadata_optional_reverb();
   while (1)
   {
+    static uint32_t pass_tick_last = 0;
+    bool pass_tick = zeptomech_tick(&pass_tick_last, ZEPTOMECH_PASS_US);
     audio_media_poll();
     // a bank change loads the bank's metadata one small step per call, and
     // zeptomech's main loop is slower than zeptocore's, so run more steps
@@ -356,7 +387,7 @@ void __not_in_flash_func(input_handling)()
     }
 
     // if in startup deduct
-    if (adc_startup > 0)
+    if (adc_startup > 0 && pass_tick)
     {
       adc_startup--;
       // if (adc_startup == 0) {
@@ -387,7 +418,7 @@ void __not_in_flash_func(input_handling)()
 
 #ifdef BTN_COL_START
     // button handler
-    if (button_handler(bm))
+    if (zeptomech_button_handler(bm))
     {
       // reset knob debouncers
       adc_threshold = 10000;
@@ -523,7 +554,8 @@ void __not_in_flash_func(input_handling)()
 
     if (debounce_beat_repeat > 0)
     {
-      debounce_beat_repeat--;
+      if (pass_tick)
+        debounce_beat_repeat--;
       if (debounce_beat_repeat == 10)
       {
         BeatRepeat_repeat(beatrepeat,
@@ -545,7 +577,7 @@ void __not_in_flash_func(input_handling)()
     {
       adc_debounce[0] = adc_debounce_max;
     }
-    if (adc_debounce[0])
+    if (adc_debounce[0] && pass_tick)
     {
       adc_last[0] = adc;
       adc_debounce[0]--;
@@ -653,7 +685,7 @@ void __not_in_flash_func(input_handling)()
       sample_selection_index_last = sample_selection_index;
       debounce_sample_selection = 40;
     }
-    else if (debounce_sample_selection > 0)
+    else if (debounce_sample_selection > 0 && pass_tick)
     {
       debounce_sample_selection--;
       if (debounce_sample_selection == 0)
@@ -673,7 +705,7 @@ void __not_in_flash_func(input_handling)()
 
 #ifdef BTN_COL_START
     if (!is_arcade_box)
-      button_handler(bm);
+      zeptomech_button_handler(bm);
 #endif
 
     clockPulseUpdate(clockinput);
@@ -688,7 +720,7 @@ void __not_in_flash_func(input_handling)()
     {
       adc_debounce[1] = adc_debounce_max;
     }
-    if (adc_debounce[1] > 0)
+    if (adc_debounce[1] > 0 && pass_tick)
     {
       adc_last[1] = adc;
       adc_debounce[1]--;
@@ -823,7 +855,7 @@ void __not_in_flash_func(input_handling)()
 
 #ifdef BTN_COL_START
     if (!is_arcade_box)
-      button_handler(bm);
+      zeptomech_button_handler(bm);
 #endif
 
     clockPulseUpdate(clockinput);
@@ -836,7 +868,7 @@ void __not_in_flash_func(input_handling)()
     {
       adc_debounce[2] = adc_debounce_max;
     }
-    if (adc_debounce[2] > 0)
+    if (adc_debounce[2] > 0 && pass_tick)
     {
       adc_last[2] = adc;
       adc_debounce[2]--;
@@ -1172,7 +1204,7 @@ void __not_in_flash_func(input_handling)()
 
 #ifdef BTN_COL_START
     if (!is_arcade_box)
-      button_handler(bm);
+      zeptomech_button_handler(bm);
 #endif
 
     clockPulseUpdate(clockinput);

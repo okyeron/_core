@@ -158,7 +158,16 @@ void ButtonMatrix_read(ButtonMatrix *bm) {
   // read new value;
   uint32_t value = 0;
   pio_sm_clear_fifos(bm->pio, bm->sm);
+#ifdef INCLUDE_ZEPTOMECH
+  // a scan takes ~1 us (the pio runs unclocked): wait for one fresh value
+  // rather than 1 ms, which zeptomech's main loop paid 4 times per pass
+  uint32_t scan_start = time_us_32();
+  while (pio_sm_is_rx_fifo_empty(bm->pio, bm->sm) &&
+         time_us_32() - scan_start < 100) {
+  }
+#else
   sleep_ms(1);
+#endif
   if (pio_sm_is_rx_fifo_empty(bm->pio, bm->sm)) {
     return;
   }
